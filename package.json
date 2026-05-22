@@ -1,0 +1,16 @@
+{
+  "name": "estreux",
+  "version": "0.0.0",
+  "private": true,
+  "description": "EstreUX — .eux 자연어 중간 레이어 → EstreUI/EstreUV 다중(γ-driven) expansion. Phase A thin spike.",
+  "type": "module",
+  "bin": {
+    "estreux": "./spike/expand.mjs"
+  },
+  "scripts": {
+    "expand": "node spike/expand.mjs spike/notif-toggle.eux",
+    "drift": "node spike/drift-check.mjs spike/notif-toggle.eux",
+    "spike": "node spike/expand.mjs spike/notif-toggle.eux && node spike/drift-check.mjs spike/notif-toggle.eux"
+  },
+  "license": "UNLICENSED"
+}

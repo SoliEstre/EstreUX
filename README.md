@@ -1,0 +1,33 @@
+# EstreUX.js
+
+**EstreUX** (Unified eXperience) — Estre 생태계의 **개발 시점 메타-레이어**. 자연어 중간 소스
+`.eux` 를 LLM expansion 으로 EstreUI(macro-Rimwork) / EstreUV(micro-Rimwork) 코드로 펼친다.
+γ-EstreUX-driven: **한 `.eux` spec → 다중 타깃(UI 단독 / UV 단독 / 페어) 자동 생성**.
+런타임에는 흔적이 없다(런타임 LLM 의존 0).
+
+> **상태: Phase A — thin spike** (2026-05-22~). 메커니즘·구조·도구 계약을 격리 검증 중.
+> 풀 MVP(다중 채널·reverse sync·Estrim 통합)는 EstreUV 1.0 GA + usage data 후(Phase B).
+> 기획·근거: 허브 [PM 009](https://github.com/SoliEstre/EstreUI.js-common-workspace) /
+> Rule 7 리포트(`2026-05-22-estreux-rule7-entry`).
+
+## Phase A spike 실행
+
+```bash
+npm run expand   # notif-toggle.eux → dist/{estreuv,estreui,pair}/notif-toggle.js
+npm run drift    # .eux ↔ 산출물 일관성 검사
+npm run spike    # expand + drift
+```
+
+- 합성 예제: [`spike/notif-toggle.eux`](spike/notif-toggle.eux) (알림 토글 위젯)
+- `.eux` 포맷: [`docs/eux-format-v0.md`](docs/eux-format-v0.md)
+- spike 결과: [`spike/SPIKE.md`](spike/SPIKE.md)
+
+## 범위 주의 (PoC)
+
+Phase A expander 는 **결정적 템플릿 매핑**(LLM stand-in)이다. 단일 spec → 다중 타깃 구조,
+provenance, drift, 재현성을 검증하는 것이 목적이며, **자연어 이해 기반 LLM expansion(Ollama/
+BYOK)은 Phase B** 에서 같은 `.eux` 계약 위에 교체된다.
+
+## 라이선스
+
+미정 (UNLICENSED, 비공개) — GA 시점 결정.
