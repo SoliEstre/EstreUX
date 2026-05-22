@@ -8,7 +8,8 @@
  *
  * ⚠ PoC 한정: 여기서 "expander" 는 **결정적 템플릿 매핑**(LLM stand-in)이다.
  * 단일 spec → 다중 타깃 구조·provenance·drift·재현성을 격리 검증하는 것이 목적이며,
- * 자연어 이해 기반 LLM expansion(Ollama/BYOK)은 Phase B 에서 같은 .eux 계약 위에 교체된다.
+ * 자연어 이해 기반 LLM expansion 은 Phase B 에서 같은 .eux 계약 위에 교체된다.
+ * (LLM provider 는 provider-무관: 프런티어/BYOK + 로컬 Ollama·vLLM·LM Studio 수평 옵션, trio `model` 선택)
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';

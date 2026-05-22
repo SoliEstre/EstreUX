@@ -35,7 +35,7 @@
 ## 발견 / 한계 (정직)
 
 1. **PoC expander = 결정적 템플릿** (LLM stand-in). 자연어 `@render` 묘사는 구조적으로만
-   해석됨 — 진짜 NL 이해는 Phase B(Ollama). S2 의 "100% 결정성"은 PoC 특성이고, LLM 단계에선
+   해석됨 — 진짜 NL 이해는 Phase B(LLM). S2 의 "100% 결정성"은 PoC 특성이고, LLM 단계에선
    "거의 동일"로 약화됨이 정직.
 2. **estreui 변종은 대표 패턴** — EstreUI 실 API 정합은 Phase B 에서 강결합 데모로 검증. estreuv
    변종은 실 API(`EstreUVElement`)에 맞춤.
@@ -48,5 +48,5 @@
 
 - (2단계) 플래그십 데모 1 페이지 슬라이스로 같은 흐름 재현 → 실 evidence
 - pre-commit hook 실제 설치(`drift-check`) + CI
-- LLM provider 추상화(Ollama 우선) 인터페이스 → `expand` 의 템플릿 자리에 주입
+- LLM provider 추상화 인터페이스 → `expand` 의 템플릿 자리에 주입. **provider-무관**: 프런티어/BYOK(Claude·GPT 등)와 로컬 서버(**Ollama·vLLM·LM Studio** 등) 수평 옵션, trio `model` 선택. 로컬/오픈웨이트는 함수호출·구조적 출력 강한 모델(예: **Nous Hermes** 계열) 적합 — Hermes류 tool-use 연동 참고
 - estreux/create-estreux npm **가용성 확인만**(publish 는 Phase B, Q-EUX-3)

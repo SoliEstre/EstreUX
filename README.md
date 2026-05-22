@@ -25,8 +25,9 @@ npm run spike    # expand + drift
 ## 범위 주의 (PoC)
 
 Phase A expander 는 **결정적 템플릿 매핑**(LLM stand-in)이다. 단일 spec → 다중 타깃 구조,
-provenance, drift, 재현성을 검증하는 것이 목적이며, **자연어 이해 기반 LLM expansion(Ollama/
-BYOK)은 Phase B** 에서 같은 `.eux` 계약 위에 교체된다.
+provenance, drift, 재현성을 검증하는 것이 목적이며, **자연어 이해 기반 LLM expansion 은 Phase B**
+에서 같은 `.eux` 계약 위에 교체된다. LLM provider 는 **provider-무관**(특정 기본 없음) — 프런티어/
+BYOK(Claude·GPT 등)와 로컬 서버(Ollama·vLLM·LM Studio 등)를 수평 옵션으로(trio `model` 선택).
 
 ## 라이선스
 

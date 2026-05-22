@@ -20,7 +20,7 @@
 
 `@expansion temperature + model + template` 셋이 박혀야 "같은 trio → 거의 동일한 결과"의
 약한 재현 claim 성립. PoC 는 결정적 템플릿(`poc/deterministic-templater@v0`)이라 trio 고정 시
-**바이트 동일**(S2). Phase B 는 LLM(Ollama) 으로 교체 — temperature=0 도 100% 결정성은
+**바이트 동일**(S2). Phase B 는 LLM 으로 교체 — temperature=0 도 100% 결정성은
 아니므로(모델 버전·batch·hardware) claim 은 "거의 동일"이 정직.
 
 ## provenance & drift
@@ -33,5 +33,5 @@ pre-commit hook 으로 걸어 spec ↔ 코드 표류를 커밋 전 차단.
 
 - 인라인 마커(`// <= …`, `/* <: … */`) — §11.0 #2, Phase B
 - reverse sync(코드→`.eux`) — §11.0 #6
-- LLM provider 추상화(Ollama/BYOK) — §11.0 #4
+- LLM provider 추상화 — §11.0 #4. **provider-무관**(특정 기본 없음): 프런티어/BYOK(Claude·GPT 등)와 로컬 서버(**Ollama · vLLM · LM Studio** 등)를 **수평 옵션**으로, 결정성 trio `model` 로 선택. 로컬/오픈웨이트는 함수호출·구조적 출력 강한 모델(예: **Nous Hermes** 계열)이 적합 — Hermes류 tool-use/structured-output 연동 참고
 - 결정 휴리스틱(어느 layer로?) 자동화 — usage data 후
