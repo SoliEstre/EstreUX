@@ -7,8 +7,7 @@
 
 > **상태: Phase A — thin spike** (2026-05-22~). 메커니즘·구조·도구 계약을 격리 검증 중.
 > 풀 MVP(다중 채널·reverse sync·Estrim 통합)는 EstreUV 1.0 GA + usage data 후(Phase B).
-> 기획·근거: 허브 [PM 009](https://github.com/SoliEstre/EstreUI.js-common-workspace) /
-> Rule 7 리포트(`2026-05-22-estreux-rule7-entry`).
+> 기획·근거: 허브 워크스페이스(비공개 조율)의 PM 009 / Rule 7 리포트.
 
 ## Phase A spike 실행
 
@@ -31,4 +30,6 @@ BYOK(Claude·GPT 등)와 로컬 서버(Ollama·vLLM·LM Studio 등)를 수평 �
 
 ## 라이선스
 
-미정 (UNLICENSED, 비공개) — GA 시점 결정.
+**공개(public) 소스 repo.** 사용(use) 라이선스는 **GA 시점 확정** (현재 미정 — EstreUI/EstreUV
+라이선스와 정합 예정). npm 발행은 Phase B (`package.json` `private:true` = npm 발행 가드, GitHub
+공개와 무관).

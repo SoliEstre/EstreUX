@@ -1,6 +1,6 @@
 # EstreUX Phase A — thin spike 결과
 
-> 상위: 허브 [PM 009](../../EstreUI.js%20common%20workspace/.agent/PM/009_estreux_mvp.md) / Rule 7 리포트.
+> 상위: 허브 워크스페이스(비공개 조율)의 PM 009 / Rule 7 리포트.
 > 일자: 2026-05-22 · 작성: Claude Opus 4.7 (1M context)
 > 결정 반영: Q-EUX-1 sister repo / **Q-EUX-2 합성 예제(격리) 우선** / Q-EUX-3 publish Phase B.
 
