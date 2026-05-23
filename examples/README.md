@@ -57,6 +57,13 @@ wordchainStoryPanel(document.querySelector('#host'));
 
 세 변종 모두 `estreuv` / `estreui` / `lit` 를 bare import 하므로 번들러나 import-map 으로 해석해 사용한다.
 
+## 변종 번들 브라우저 검증
+
+[`bundle-check.html`](bundle-check.html) — import-map(esm.sh) 으로 3변종을 실제 브라우저에서 마운트·동작 확인하는 하네스. 정적 http 서버로 `examples/` 를 서빙해 연다(`file://` 는 ES module CORS 로 막힘).
+
+- **estreuv · pair**: `estreuv@0.2.0` + `lit@3.3.3`(estreuv 는 `?external=lit` 로 변종과 lit 인스턴스 공유) 로 마운트 + agent 폴백 끝말잇기 회전까지 동작 확인 ✓
+- **estreui**: `estreui@1.4.0` 의 esm.sh build entry 미해석("could not resolve build entry") 으로 CDN 로드 실패 → EstreUI.js 패키지의 ESM exports/entry 후속 과제(변종 코드 자체는 `node --check`·drift 통과)
+
 ## drift 검사
 
 ```bash

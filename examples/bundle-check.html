@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EstreUX 변종 번들 검증 — wordchain-story</title>
+<!--
+  brew 산출물 3변종을 실제 브라우저에서 마운트·동작 확인하는 import-map 하네스.
+  estreuv/estreui/lit 는 esm.sh 로 해석(버전 핀). estreuv 는 ?external=lit 로
+  변종과 같은 lit 인스턴스를 공유한다. 정적 http 서버로 examples/ 를 서빙해 열 것
+  (file:// 는 ES module CORS 로 막힘). agent provider 면 키 없이 폴백으로 동작.
+
+  검증(2026-05-23): estreuv·pair 마운트 + agent 폴백 끝말잇기 회전 동작 OK.
+  estreui 는 estreui@1.4.0 의 esm.sh build entry 미해석("could not resolve
+  build entry")으로 CDN 로드 실패 → EstreUI.js 패키지 ESM exports/entry 후속.
+  (estreui 변종 코드 자체는 node --check·drift 통과)
+-->
+<script type="importmap">
+{
+  "imports": {
+    "estreuv": "https://esm.sh/estreuv@0.2.0?external=lit",
+    "estreui": "https://esm.sh/estreui@1.4.0",
+    "lit": "https://esm.sh/lit@3.3.3",
+    "lit/": "https://esm.sh/lit@3.3.3/"
+  }
+}
+</script>
+<style>
+  body { background:#0f1115; color:#e7e9ea; font:14px system-ui,"Noto Sans KR",sans-serif; margin:0; }
+  section { height:33vh; min-height:240px; border-bottom:1px solid #2a2f3a; display:flex; flex-direction:column; }
+  h2 { margin:6px 12px; font-size:.78rem; color:#9aa3ad; font-weight:600; }
+  .host { flex:1; min-height:0; }
+</style>
+</head>
+<body>
+  <section><h2>estreuv — &lt;wordchain-story&gt; (custom element)</h2><div class="host"><wordchain-story></wordchain-story></div></section>
+  <section><h2>estreui — wordchainStory(host) (function)</h2><div id="ui" class="host"></div></section>
+  <section><h2>pair — EstreUI 컨테이너가 EstreUV 엘리먼트 호스팅</h2><div id="pair" class="host"></div></section>
+<script type="module">
+  // 변종별로 격리해 import — 한 변종(esm.sh 패키지 이슈 등)이 실패해도 나머지는 검증.
+  window._r = { uv: '…', ui: '…', pair: '…' };
+  try { await import('./dist/estreuv/wordchain-story.js'); window._r.uv = 'ok'; }   // customElements.define
+  catch (e) { window._r.uv = 'fail: ' + (e && e.message || e); }
+  try { const m = await import('./dist/estreui/wordchain-story.js'); window._ui = m.wordchainStory(document.getElementById('ui')); window._r.ui = 'ok'; }
+  catch (e) { window._r.ui = 'fail: ' + (e && e.message || e); }
+  try { const m = await import('./dist/pair/wordchain-story.js'); window._pair = m.wordchainStoryPanel(document.getElementById('pair')); window._r.pair = 'ok'; }
+  catch (e) { window._r.pair = 'fail: ' + (e && e.message || e); }
+  window._done = true;
+</script>
+</body>
+</html>
