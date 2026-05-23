@@ -19,6 +19,7 @@ npm run spike    # brew + drift
 ```
 
 - 합성 예제: [`spike/notif-toggle.eux`](spike/notif-toggle.eux) (알림 토글 위젯)
+- 플래그십 예제: [`examples/`](examples/) (끝말잇기 스토리 — 1 spec → 3 변종 인터랙티브 데모, brew provider=`agent`)
 - `.eux` 포맷: [`docs/eux-format-v0.md`](docs/eux-format-v0.md)
 - spike 결과: [`spike/SPIKE.md`](spike/SPIKE.md)
 - brew provider (2026-05-23 확정): **기본 = 호스트 에이전트/서브에이전트** (에이전트 IDE 안에서 별도 키 없이 brew, γ 타깃 병렬 위임 — 실구현 Phase B) · **부가 = API/OAuth** (로컬 Ollama·vLLM·LM Studio · BYOK, 헤드리스·CI용) · **lock = `template`** (결정적 PoC, 현 Phase A 사용). [`spike/providers/`](spike/providers/), trio `model` prefix 로 선택.
