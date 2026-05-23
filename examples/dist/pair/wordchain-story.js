@@ -1,5 +1,5 @@
 // ┌─ estreux:expanded ──────────────────────────────────────────────
-// │ source : wordchain-story.eux  (sha256:1fb7fa7af0d8)
+// │ source : wordchain-story.eux  (sha256:a614ce3acdd5)
 // │ target : pair   provider : agent/claude
 // │ trio   : temp=0.4 model=agent/claude template=estreux/v0.0.1
 // │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run brew` 로 재생성 (drift-check 감시).

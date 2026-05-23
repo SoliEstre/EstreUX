@@ -1,5 +1,5 @@
 // ┌─ estreux:expanded ──────────────────────────────────────────────
-// │ source : wordchain-story.eux  (sha256:1fb7fa7af0d8)
+// │ source : wordchain-story.eux  (sha256:a614ce3acdd5)
 // │ target : estreui   provider : agent/claude
 // │ trio   : temp=0.4 model=agent/claude template=estreux/v0.0.1
 // │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run brew` 로 재생성 (drift-check 감시).
@@ -26,21 +26,44 @@ const langName = l => l === 'en' ? '영어' : l === 'ja' ? '일본어' : '한국
 /**
  * wordchainStory — EstreUI(macro-Rimwork, jQuery-class primitive) 단독 변종.
  * 끝말잇기 회전·카드 클릭 시 스토리 누적(스무스 스크롤)·~1.5초 자동 재개. 설정은 1회 렌더 후
- * 카드/스토리 영역만 부분 갱신(설정 입력 보존). 런타임 문장 생성은 genChain provider 분기.
+ * 카드/스토리/모델 영역만 부분 갱신(설정 입력 보존). provider(+key) 정해지면 refreshModels 가
+ * /v1/models 로 모델 목록을 받아 선택(모델 선택까지 끝나야 시작 가능). 런타임 문장 생성은 genChain provider 분기.
  */
 export function wordchainStory(host) {
-  const st = { running: false, words: ['·', '·', '·', '·'], story: [], active: 0, candidates: 9, provider: '', apiKey: '', lang: (navigator.language || 'ko').slice(0, 2), _chain: [], _pos: 0, _cellWord: {}, _picked: -1, _t: null };
+  const st = { running: false, words: ['·', '·', '·', '·'], story: [], active: 0, candidates: 9, provider: '', apiKey: '', model: '', models: [], _modelHint: '— provider 선택 —', lang: (navigator.language || 'ko').slice(0, 2), _chain: [], _pos: 0, _cellWord: {}, _picked: -1, _t: null };
   try { const s = JSON.parse(localStorage.getItem('wordchain-story') || '{}'); ['lang', 'candidates', 'provider'].forEach(k => k in s && (st[k] = s[k])); } catch {}
   const save = () => localStorage.setItem('wordchain-story', JSON.stringify({ lang: st.lang, candidates: st.candidates, provider: st.provider }));
-  const canStart = () => !!st.provider && (st.provider === 'agent' || !!st.apiKey);
+  const canStart = () => st.provider === 'agent' || (!!BASE[st.provider] && !!st.model);
 
-  // 런타임 끝말잇기 체인 생성: provider 분기. agent/미지원 → 폴백, openai-compatible → fetch.
+  // provider(+key) 가 정해지면 /v1/models 로 사용 가능한 모델 목록을 받아 채운다. 실패 시 기본 모델 1개로 폴백.
+  let modelTimer = null;
+  const scheduleModels = () => { clearTimeout(modelTimer); modelTimer = setTimeout(refreshModels, 600); };
+  async function refreshModels() {
+    st.model = ''; st.models = [];
+    if (st.provider === 'agent') { st._modelHint = '에이전트 자동'; paintModels(); paintFoot(); return; }
+    if (!BASE[st.provider]) { st._modelHint = '— provider 선택 —'; paintModels(); paintFoot(); return; }
+    if (st.provider === 'openai' && !st.apiKey) { st._modelHint = '— API Key 입력 후 로드 —'; paintModels(); paintFoot(); return; }
+    st._modelHint = '⏳ 모델 로드 중…'; paintModels(); paintFoot();
+    try {
+      const r = await fetch(BASE[st.provider] + '/models', { headers: st.apiKey ? { Authorization: 'Bearer ' + st.apiKey } : {} });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json(); const ids = (d.data || []).map(x => x.id).filter(Boolean).sort();
+      if (!ids.length) throw new Error('모델 없음');
+      st.models = ids; st.model = ids.includes(MODEL[st.provider]) ? MODEL[st.provider] : ids[0];
+    } catch (e) {
+      console.warn('모델 목록 실패 → 기본값:', e);
+      const def = MODEL[st.provider] || ''; st.models = def ? [def] : []; st.model = def; st._modelHint = '목록 실패·기본값';
+    }
+    paintModels(); paintFoot();
+  }
+
+  // 런타임 끝말잇기 체인 생성: provider 분기. agent/미지원 → 폴백, openai-compatible → 선택 모델로 fetch.
   async function genChain() { if (st.provider === 'agent' || !BASE[st.provider]) return FALLBACK; try { return await llmChain(); } catch (e) { console.warn('LLM 실패 → 폴백 체인:', e); return FALLBACK; } }
   // openai-compatible(/v1/chat/completions) — 끝말잇기 단어 candidates 개 + 이야기 문장 생성.
   async function llmChain() {
     const n = Math.max(4, +st.candidates || 9);
     const prompt = `끝말잇기(앞 단어의 마지막 글자 = 다음 단어의 첫 글자) 규칙으로 이어지는 단어 ${n}개와, 각 단어가 자연스럽게 등장하며 하나로 이어지는 짧은 이야기 문장을 ${langName(st.lang)}로 만들어줘. 반드시 JSON 배열 [{"w":"단어","s":"문장"}] 형식만 출력(다른 설명 금지).`;
-    const r = await fetch(BASE[st.provider] + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(st.apiKey ? { Authorization: 'Bearer ' + st.apiKey } : {}) }, body: JSON.stringify({ model: MODEL[st.provider] || '', messages: [{ role: 'user', content: prompt }], temperature: 0.4 }) });
+    const r = await fetch(BASE[st.provider] + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(st.apiKey ? { Authorization: 'Bearer ' + st.apiKey } : {}) }, body: JSON.stringify({ model: st.model || MODEL[st.provider] || '', messages: [{ role: 'user', content: prompt }], temperature: 0.4 }) });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json(); const t = d.choices?.[0]?.message?.content || '';
     const arr = JSON.parse(t.slice(t.indexOf('['), t.lastIndexOf(']') + 1)).filter(x => x && x.w && x.s);
@@ -61,6 +84,7 @@ export function wordchainStory(host) {
   function paintGrid() { const g = EstreUI(host).find('.wc-grid')[0]; if (g) g.outerHTML = gridHtml(); bindCards(); }
   function paintStory() { const l = EstreUI(host).find('.wc-lines')[0]; if (l) l.outerHTML = storyHtml(); }
   function paintFoot() { const t = EstreUI(host).find('#toggle')[0]; if (t) { t.textContent = st.running ? '⏸ 일시정지' : '▶ 시작'; t.disabled = !canStart(); t.className = st.running ? 'running' : ''; } }
+  function paintModels() { const m = EstreUI(host).find('#model')[0]; if (!m) return; if (st.models.length) { m.innerHTML = st.models.map(id => `<option value="${id}"${id === st.model ? ' selected' : ''}>${id}</option>`).join(''); m.disabled = false; m.value = st.model; } else { m.innerHTML = `<option value="">${st._modelHint}</option>`; m.disabled = true; } }
   function bindCards() { EstreUI(host).find('.wc-card').on('click', e => pick(+e.currentTarget.dataset.cell)); }
   function renderOnce() {
     EstreUI(host).html(`
@@ -83,6 +107,7 @@ export function wordchainStory(host) {
         #toggle{background:var(--done,#2fae66);color:#fff;border:0;font-weight:700;padding:10px 20px;border-radius:9px;cursor:pointer}
         #toggle:disabled{background:var(--panel2,#1e222b);color:var(--muted,#9aa3ad);cursor:not-allowed}
         #toggle.running{background:var(--active,#d9a23b)}
+        #model{max-width:200px}
       </style>
       <div class="wc-root">
         <div class="wc-head"><button id="copy">⧉ 복사</button><button id="share">↗ 공유</button></div>
@@ -90,6 +115,7 @@ export function wordchainStory(host) {
         <div class="wc-foot">
           <div><label>AI Provider</label><select id="provider"><option value="">— 선택 —</option><option value="agent">agent (현재 에이전트)</option><option value="openai">openai</option><option value="ollama">ollama</option><option value="vllm">vllm</option><option value="lmstudio">lmstudio</option></select></div>
           <div><label>API Key</label><input id="key" type="password" placeholder="sk-…"></div>
+          <div><label>모델</label><select id="model" disabled><option value="">— provider 선택 —</option></select></div>
           <div><label>언어</label><select id="lang"><option value="ko">한국어</option><option value="en">English</option><option value="ja">日本語</option></select></div>
           <div><label>문장 후보 수</label><input id="cand" type="number" min="1" max="30" value="${st.candidates}" style="width:64px"></div>
           <span style="flex:1"></span>
@@ -98,14 +124,15 @@ export function wordchainStory(host) {
       </div>`);
     const $ = sel => EstreUI(host).find(sel)[0];
     $('#provider').value = st.provider; $('#lang').value = st.lang;
-    EstreUI(host).find('#provider').on('change', e => { st.provider = e.target.value; save(); paintFoot(); });
-    EstreUI(host).find('#key').on('input', e => { st.apiKey = e.target.value; paintFoot(); });
+    EstreUI(host).find('#provider').on('change', e => { st.provider = e.target.value; save(); refreshModels(); });
+    EstreUI(host).find('#key').on('input', e => { st.apiKey = e.target.value; scheduleModels(); });
+    EstreUI(host).find('#model').on('change', e => { st.model = e.target.value; paintFoot(); });
     EstreUI(host).find('#lang').on('change', e => { st.lang = e.target.value; save(); });
     EstreUI(host).find('#cand').on('input', e => { st.candidates = +e.target.value; save(); });
     EstreUI(host).find('#toggle').on('click', toggle);
     EstreUI(host).find('#copy').on('click', () => { pause(); navigator.clipboard?.writeText(st.story.join('\n')); });
     EstreUI(host).find('#share').on('click', () => pause());
-    bindCards(); paintFoot();
+    bindCards(); refreshModels();
   }
   renderOnce();
   return { start, pause, toggle, get state() { return st; } };

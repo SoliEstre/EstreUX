@@ -1,5 +1,5 @@
 // ┌─ estreux:expanded ──────────────────────────────────────────────
-// │ source : wordchain-story.eux  (sha256:1fb7fa7af0d8)
+// │ source : wordchain-story.eux  (sha256:a614ce3acdd5)
 // │ target : estreuv   provider : agent/claude
 // │ trio   : temp=0.4 model=agent/claude template=estreux/v0.0.1
 // │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run brew` 로 재생성 (drift-check 감시).
@@ -27,14 +27,16 @@ const langName = l => l === 'en' ? '영어' : l === 'ja' ? '일본어' : '한국
 /**
  * <wordchain-story> — estreuv(micro-Rimwork, Lit) 단독 변종.
  * 우측 2x2 카드 시계방향 끝말잇기 회전, 카드 클릭 시 좌측 스토리에 원전 문장 누적(스무스 스크롤) + ~1.5초 자동 재개.
- * 하단 provider/key/언어/후보수 설정, 시작=일시정지 토글(미설정 비활성), 우상단 복사·공유(클릭 시 일시정지).
- * 런타임 문장 생성은 #genChain 의 provider 분기(agent/키없음 → 폴백, openai-compatible → fetch)에서 처리.
+ * 하단 provider/key/모델/언어/후보수 설정, 시작=일시정지 토글(모델 선택까지 끝나야 활성), 우상단 복사·공유(클릭 시 일시정지).
+ * provider(+key) 가 정해지면 #refreshModels 가 /v1/models 로 모델 목록을 받아 선택하게 하고,
+ * 런타임 문장 생성은 #genChain 의 provider 분기(agent/미지원 → 폴백, openai-compatible → 선택 모델로 fetch)에서 처리.
  */
 export class WordchainStory extends EstreUVElement {
   static properties = {
     running: { type: Boolean }, words: { state: true }, story: { state: true },
     activeCell: { type: Number }, candidates: { type: Number },
     provider: { type: String }, apiKey: { type: String }, lang: { type: String },
+    model: { type: String }, models: { state: true },
   };
   static styles = css`
     :host { display:flex; flex-direction:column; height:100%; color:var(--ink,#e7e9ea); font:15px/1.5 system-ui,"Noto Sans KR",sans-serif; }
@@ -64,12 +66,34 @@ export class WordchainStory extends EstreUVElement {
     this.running = false; this.words = ['·', '·', '·', '·']; this.story = [];
     this.activeCell = 0; this.candidates = 9; this.provider = ''; this.apiKey = '';
     this.lang = (navigator.language || 'ko').slice(0, 2);
+    this.model = ''; this.models = []; this._modelHint = '— provider 선택 —';
     this._chain = []; this._pos = 0; this._cellWord = {}; this._picked = -1;
     this.#load();
   }
+  firstUpdated() { super.firstUpdated?.(); this.#refreshModels(); }
   #load() { try { const s = JSON.parse(localStorage.getItem('wordchain-story') || '{}'); ['lang', 'candidates', 'provider'].forEach(k => k in s && (this[k] = s[k])); } catch {} }
   #save() { localStorage.setItem('wordchain-story', JSON.stringify({ lang: this.lang, candidates: this.candidates, provider: this.provider })); }
-  get canStart() { return !!this.provider && (this.provider === 'agent' || !!this.apiKey); }
+  get canStart() { return this.provider === 'agent' || (!!BASE[this.provider] && !!this.model); }
+  // provider(+key) 가 정해지면 /v1/models 로 사용 가능한 모델 목록을 받아 채운다. 실패 시 기본 모델 1개로 폴백.
+  #scheduleModels() { clearTimeout(this._mt); this._mt = setTimeout(() => this.#refreshModels(), 600); }
+  async #refreshModels() {
+    this.model = ''; this.models = [];
+    if (this.provider === 'agent') { this._modelHint = '에이전트 자동'; this.requestUpdate(); return; }
+    if (!BASE[this.provider]) { this._modelHint = '— provider 선택 —'; this.requestUpdate(); return; }
+    if (this.provider === 'openai' && !this.apiKey) { this._modelHint = '— API Key 입력 후 로드 —'; this.requestUpdate(); return; }
+    this._modelHint = '⏳ 모델 로드 중…'; this.requestUpdate();
+    try {
+      const r = await fetch(BASE[this.provider] + '/models', { headers: this.apiKey ? { Authorization: 'Bearer ' + this.apiKey } : {} });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json(); const ids = (d.data || []).map(m => m.id).filter(Boolean).sort();
+      if (!ids.length) throw new Error('모델 없음');
+      this.models = ids; this.model = ids.includes(MODEL[this.provider]) ? MODEL[this.provider] : ids[0];
+    } catch (e) {
+      console.warn('모델 목록 실패 → 기본값:', e);
+      const def = MODEL[this.provider] || ''; this.models = def ? [def] : []; this.model = def; this._modelHint = '목록 실패·기본값';
+    }
+    this.requestUpdate();
+  }
   async start() {
     if (!this.canStart) return;
     if (!this._chain.length) this._chain = await this.#genChain();
@@ -98,7 +122,7 @@ export class WordchainStory extends EstreUVElement {
   async #llmChain() {
     const n = Math.max(4, +this.candidates || 9);
     const prompt = `끝말잇기(앞 단어의 마지막 글자 = 다음 단어의 첫 글자) 규칙으로 이어지는 단어 ${n}개와, 각 단어가 자연스럽게 등장하며 하나로 이어지는 짧은 이야기 문장을 ${langName(this.lang)}로 만들어줘. 반드시 JSON 배열 [{"w":"단어","s":"문장"}] 형식만 출력(다른 설명 금지).`;
-    const r = await fetch(BASE[this.provider] + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(this.apiKey ? { Authorization: 'Bearer ' + this.apiKey } : {}) }, body: JSON.stringify({ model: MODEL[this.provider] || '', messages: [{ role: 'user', content: prompt }], temperature: 0.4 }) });
+    const r = await fetch(BASE[this.provider] + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(this.apiKey ? { Authorization: 'Bearer ' + this.apiKey } : {}) }, body: JSON.stringify({ model: this.model || MODEL[this.provider] || '', messages: [{ role: 'user', content: prompt }], temperature: 0.4 }) });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json(); const t = d.choices?.[0]?.message?.content || '';
     const arr = JSON.parse(t.slice(t.indexOf('['), t.lastIndexOf(']') + 1)).filter(x => x && x.w && x.s);
@@ -125,11 +149,17 @@ export class WordchainStory extends EstreUVElement {
       </div>
       <div class="wc-foot">
         <div><label>AI Provider</label>
-          <select @change=${e => this.#set('provider', e.target.value)} .value=${this.provider}>
+          <select @change=${e => { this.#set('provider', e.target.value); this.#refreshModels(); }} .value=${this.provider}>
             <option value="">— 선택 —</option><option value="agent">agent (현재 에이전트)</option>
             <option value="openai">openai</option><option value="ollama">ollama</option><option value="vllm">vllm</option><option value="lmstudio">lmstudio</option>
           </select></div>
-        <div><label>API Key</label><input type="password" placeholder="sk-…" @input=${e => { this.apiKey = e.target.value; this.requestUpdate(); }}></div>
+        <div><label>API Key</label><input type="password" placeholder="sk-…" @input=${e => { this.apiKey = e.target.value; this.#scheduleModels(); }}></div>
+        <div><label>모델</label>
+          <select ?disabled=${!this.models.length} @change=${e => this.#set('model', e.target.value)} .value=${this.model}>
+            ${this.models.length
+              ? this.models.map(id => html`<option value=${id} ?selected=${id === this.model}>${id}</option>`)
+              : html`<option value="">${this._modelHint}</option>`}
+          </select></div>
         <div><label>언어</label>
           <select @change=${e => this.#set('lang', e.target.value)} .value=${this.lang}>
             <option value="ko">한국어</option><option value="en">English</option><option value="ja">日本語</option>
