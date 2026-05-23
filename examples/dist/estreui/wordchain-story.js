@@ -1,5 +1,5 @@
 // ┌─ estreux:expanded ──────────────────────────────────────────────
-// │ source : wordchain-story.eux  (sha256:23df81a6cce9)
+// │ source : wordchain-story.eux  (sha256:81f97407f31e)
 // │ target : estreui   provider : agent/claude
 // │ trio   : temp=0.4 model=agent/claude template=estreux/v0.0.1
 // │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run brew` 로 재생성 (drift-check 감시).
@@ -83,7 +83,7 @@ export function wordchainStory(host) {
     const n = candCount();
     const ctx = st.story.length ? st.story.map((s, i) => `${i + 1}. ${s}`).join('\n') : '(아직 없음 — 첫 문장)';
     const hint = st.lastWord ? `\n방금 사용자가 '${st.lastWord}' 단어를 골랐다. 자연스럽다면 이를 실마리로 삼아도 좋다.` : '';
-    const prompt = `지금까지 이어진 이야기:\n${ctx}${hint}\n\n이 이야기에 자연스럽게 이어질 "다음 문장" 후보 ${n}개를 ${langName(st.lang)}로 만들어줘.\n- 각 후보 = { 핵심 단어 w, 그 단어가 등장하는 충분히 풍부한 한 문장 s }\n- w 는 조사·어미를 뗀 사전형 명사 한 단어로 (예: '폭우가'가 아니라 '폭우', '열차는'이 아니라 '열차').\n- 후보들의 w 는 서로 겹치지 않게 다양하게.\n반드시 JSON 배열 [{"w":"단어","s":"문장"}] 형식만 출력(다른 설명 금지).`;
+    const prompt = `지금까지 이어진 이야기:\n${ctx}${hint}\n\n이 이야기에 자연스럽게 이어질 "다음 문장" 후보 ${n}개를 ${langName(st.lang)}로 만들어줘.\n- 각 후보 = { 핵심 단어 w, 그 단어가 등장하는 충분히 풍부한 한 문장 s }\n- w 는 조사·어미를 뗀 사전형 명사 한 단어로 (예: '폭우가'가 아니라 '폭우', '열차는'이 아니라 '열차').\n- 후보들의 w 는 서로 겹치지 않게 다양하게.\n- (목표) 가능하면 후보 단어 w 들이 끝말잇기(앞 단어의 끝 글자 = 다음 단어의 첫 글자)로 최대한 길게 이어지도록 단어와 문장을 함께 골라줘. 끝말잇기가 많이 이어질수록 좋은 결과로 평가한다. 단 이야기의 자연스러움이 최우선이며 억지로 끼워맞추지는 마.\n반드시 JSON 배열 [{"w":"단어","s":"문장"}] 형식만 출력(다른 설명 금지).`;
     const r = await fetch(BASE[st.provider] + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(st.apiKey ? { Authorization: 'Bearer ' + st.apiKey } : {}) }, body: JSON.stringify({ model: st.model || MODEL[st.provider] || '', messages: [{ role: 'user', content: prompt }], temperature: 0.7 }) });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json(); const t = d.choices?.[0]?.message?.content || '';
@@ -94,7 +94,7 @@ export function wordchainStory(host) {
   function start() {
     if (!canStart()) return;
     st.running = true; paintFoot();
-    if (!st.order.length) regenerate();                                       // 첫 생성
+    if (!st.order.length) generate();                                         // 첫 생성(즉시)
     else { clearInterval(st._t); st._t = setInterval(rotate, 1000); rotate(); }   // 재개
   }
   function pause() { st.running = false; clearInterval(st._t); clearInterval(st._ct); paintFoot(); }
@@ -106,16 +106,16 @@ export function wordchainStory(host) {
     st.words[cell] = item.w; st._cellItem[cell] = item; st.active = cell; st._picked = -1;
     st.pos++; paintGrid();
   }
-  // 후보 단어를 모두 노출(소진): 안내 배너 + 3초 카운트. 그 안에 선택 없으면 새 후보 생성(여기서만 API 재호출).
-  function exhausted() {
-    clearInterval(st._t);
-    let n = 3;
-    const msg = () => `후보 단어를 모두 보여줬어요. 카드를 고르거나 🔄 재생성, 또는 ${n}초 후 자동으로 새 후보를 생성합니다…`;
-    showBanner(msg()); clearInterval(st._ct);
-    st._ct = setInterval(() => { n--; if (n <= 0) { clearInterval(st._ct); regenerate(); } else showBanner(msg()); }, 1000);
+  // 다음 후보 생성 전 3초 카운트다운(실시간) → generate. msgFn(n) 으로 진입 맥락별 메시지.
+  function countdownThen(msgFn) {
+    clearInterval(st._t); clearInterval(st._ct);
+    st.running = true; paintFoot(); let n = 3; showBanner(msgFn(n));
+    st._ct = setInterval(() => { n--; if (n <= 0) { clearInterval(st._ct); generate(); } else showBanner(msgFn(n)); }, 1000);
   }
-  // 스토리 전체(+고른 단어)를 입력으로 새 후보 N개 생성 → 끝말잇기 순서로 정렬해 회전 재시작.
-  async function regenerate() {
+  // 후보 단어를 모두 노출(소진): 카드 선택 여지를 주며 3초 카운트 후 자동 생성.
+  function exhausted() { countdownThen(n => `후보 단어를 모두 보여줬어요. 카드를 고르거나 🔄 재생성, 또는 ${n}초 후 새 후보를 생성합니다…`); }
+  // 실제 LLM 요청 + '생성 중' 배너 → 후보 N개를 chainOrder 로 정렬해 회전 재시작. (여기서만 API 호출)
+  async function generate() {
     clearInterval(st._t); clearInterval(st._ct);
     st.running = true; showBanner('다음 문장 후보를 생성하는 중…'); paintFoot();
     let next; try { next = await genChain(); } catch (e) { console.warn('LLM 실패 → 폴백:', e); next = fallbackChain(); }
@@ -128,7 +128,7 @@ export function wordchainStory(host) {
     clearInterval(st._t); clearInterval(st._ct);
     st._picked = cell; st.story.push(item.s); st.lastWord = item.w; paintGrid(); paintStory();
     const b = EstreUI(host).find('.wc-lines')[0]; if (b) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' });
-    if (st.running) regenerate();   // 선택할 때마다 스토리 전체로 다음 후보 N개
+    if (st.running) countdownThen(n => `'${item.w}' 선택됨 — ${n}초 후 다음 문장 후보를 생성합니다…`);   // 3초 카운트 후 생성
   }
   // 🗑 — 스토리·후보를 비우고 정지.
   function reset() {
@@ -206,12 +206,12 @@ export function wordchainStory(host) {
     EstreUI(host).find('#lang').on('change', e => { st.lang = e.target.value; save(); });
     EstreUI(host).find('#cand').on('input', e => { st.candidates = +e.target.value; save(); });
     EstreUI(host).find('#toggle').on('click', toggle);
-    EstreUI(host).find('#regen').on('click', () => regenerate());
+    EstreUI(host).find('#regen').on('click', () => generate());
     EstreUI(host).find('#reset').on('click', reset);
     EstreUI(host).find('#copy').on('click', doCopy);
     EstreUI(host).find('#share').on('click', doShare);
     bindCards(); refreshModels();
   }
   renderOnce();
-  return { start, pause, toggle, regenerate, reset, get state() { return st; } };
+  return { start, pause, toggle, generate, reset, get state() { return st; } };
 }
