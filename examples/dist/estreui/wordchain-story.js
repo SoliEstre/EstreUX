@@ -19,6 +19,9 @@ const FALLBACK = [
 ];
 const POS = ['좌상', '우상', '좌하', '우하'];
 const ORDER = [0, 1, 3, 2];   // 시계방향
+const BASE = { openai: 'https://api.openai.com/v1', ollama: 'http://localhost:11434/v1', vllm: 'http://localhost:8000/v1', lmstudio: 'http://localhost:1234/v1' };
+const MODEL = { openai: 'gpt-4o-mini', ollama: 'llama3.2', vllm: '', lmstudio: 'local-model' };
+const langName = l => l === 'en' ? '영어' : l === 'ja' ? '일본어' : '한국어';
 
 /**
  * wordchainStory — EstreUI(macro-Rimwork, jQuery-class primitive) 단독 변종.
@@ -31,8 +34,18 @@ export function wordchainStory(host) {
   const save = () => localStorage.setItem('wordchain-story', JSON.stringify({ lang: st.lang, candidates: st.candidates, provider: st.provider }));
   const canStart = () => !!st.provider && (st.provider === 'agent' || !!st.apiKey);
 
-  async function genChain() { if (st.provider === 'agent' || !st.apiKey) return FALLBACK; try { return await llmChain(); } catch { return FALLBACK; } }
-  async function llmChain() { return FALLBACK; }   // openai-compatible(/v1/chat/completions) 연동 자리; 실패 시 폴백
+  // 런타임 끝말잇기 체인 생성: provider 분기. agent/미지원 → 폴백, openai-compatible → fetch.
+  async function genChain() { if (st.provider === 'agent' || !BASE[st.provider]) return FALLBACK; try { return await llmChain(); } catch (e) { console.warn('LLM 실패 → 폴백 체인:', e); return FALLBACK; } }
+  // openai-compatible(/v1/chat/completions) — 끝말잇기 단어 candidates 개 + 이야기 문장 생성.
+  async function llmChain() {
+    const n = Math.max(4, +st.candidates || 9);
+    const prompt = `끝말잇기(앞 단어의 마지막 글자 = 다음 단어의 첫 글자) 규칙으로 이어지는 단어 ${n}개와, 각 단어가 자연스럽게 등장하며 하나로 이어지는 짧은 이야기 문장을 ${langName(st.lang)}로 만들어줘. 반드시 JSON 배열 [{"w":"단어","s":"문장"}] 형식만 출력(다른 설명 금지).`;
+    const r = await fetch(BASE[st.provider] + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(st.apiKey ? { Authorization: 'Bearer ' + st.apiKey } : {}) }, body: JSON.stringify({ model: MODEL[st.provider] || '', messages: [{ role: 'user', content: prompt }], temperature: 0.4 }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json(); const t = d.choices?.[0]?.message?.content || '';
+    const arr = JSON.parse(t.slice(t.indexOf('['), t.lastIndexOf(']') + 1)).filter(x => x && x.w && x.s);
+    if (!arr.length) throw new Error('빈 응답'); return arr;
+  }
   async function start() { if (!canStart()) return; if (!st._chain.length) st._chain = await genChain(); st.running = true; clearInterval(st._t); st._t = setInterval(rotate, 1000); rotate(); paintFoot(); }
   function pause() { st.running = false; clearInterval(st._t); paintFoot(); }
   function toggle() { st.running ? pause() : start(); }
