@@ -1,0 +1,15 @@
+#!/bin/sh
+# EstreUX pre-commit — .eux ↔ 산출물 drift 검사 (S3 게이트).
+# 추적되는 모든 .eux 에 대해 drift-check 실행. drift 면 비-0 종료로 커밋 차단.
+# 활성화: `git config core.hooksPath .githooks` (npm install 시 prepare 가 자동 설정).
+
+fail=0
+for eux in $(git ls-files '*.eux'); do
+  node spike/drift-check.mjs "$eux" || fail=1
+done
+if [ "$fail" -ne 0 ]; then
+  echo ""
+  echo "✗ EstreUX drift — .eux 와 산출물이 불일치합니다. \`npm run expand\` 후 다시 커밋하세요."
+  exit 1
+fi
+exit 0

@@ -20,6 +20,8 @@ npm run spike    # expand + drift
 - 합성 예제: [`spike/notif-toggle.eux`](spike/notif-toggle.eux) (알림 토글 위젯)
 - `.eux` 포맷: [`docs/eux-format-v0.md`](docs/eux-format-v0.md)
 - spike 결과: [`spike/SPIKE.md`](spike/SPIKE.md)
+- LLM provider: [`spike/providers/`](spike/providers/) — `template`(결정적 PoC, 기본) + `openai-compatible`(Ollama·vLLM·LM Studio·OpenAI 공통). trio `model` prefix(`template/…`·`ollama/…`·`openai/…`)로 **수평** 선택, 특정 기본 없음.
+- drift 훅: `git config core.hooksPath .githooks` (또는 `npm install` 시 `prepare` 가 자동 설정). 커밋 전 `.eux`↔산출물 drift 를 차단.
 
 ## 범위 주의 (PoC)
 

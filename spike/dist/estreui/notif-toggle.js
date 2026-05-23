@@ -1,7 +1,7 @@
 // ┌─ estreux:expanded ──────────────────────────────────────────────
-// │ source : notif-toggle.eux  (sha256:db7e961e85a7)
-// │ target : estreui
-// │ trio   : temp=0.0 model=poc/deterministic-templater@v0 template=estreux/v0.0.1
+// │ source : notif-toggle.eux  (sha256:5f22b106a337)
+// │ target : estreui   provider : template
+// │ trio   : temp=0.0 model=template/deterministic-templater@v0 template=estreux/v0.0.1
 // │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run expand` 로 재생성 (drift-check 감시).
 // └─────────────────────────────────────────────────────────────────
 import { EstreUI } from 'estreui';

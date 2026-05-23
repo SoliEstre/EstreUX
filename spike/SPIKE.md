@@ -44,9 +44,14 @@
 4. **결정 휴리스틱**(어느 layer로 펼칠지)은 본 spike 가 다루지 않음 — `@targets` 명시로 우회.
    자동 휴리스틱은 usage data 후(§11.0 #7).
 
-## 다음 (Phase A 마무리 → B)
+## 2단계 진행 (2026-05-23)
 
-- (2단계) 플래그십 데모 1 페이지 슬라이스로 같은 흐름 재현 → 실 evidence
-- pre-commit hook 실제 설치(`drift-check`) + CI
-- LLM provider 추상화 인터페이스 → `expand` 의 템플릿 자리에 주입. **provider-무관**: 프런티어/BYOK(Claude·GPT 등)와 로컬 서버(**Ollama·vLLM·LM Studio** 등) 수평 옵션, trio `model` 선택. 로컬/오픈웨이트는 함수호출·구조적 출력 강한 모델(예: **Nous Hermes** 계열) 적합 — Hermes류 tool-use 연동 참고
+- ✅ **pre-commit hook 실설치** — `.githooks/pre-commit`(무의존) + `core.hooksPath`(npm `prepare` 가 자동 설정). 추적 `.eux` 전체 drift-check, drift 시 커밋 차단. 검증: in-sync→통과(0) / drift→차단(exit 1)+안내 / 복원→통과.
+- ✅ **LLM provider 추상화** — `providers/`(template + openai-compatible) + `resolveProvider(model)`. trio `model` prefix 로 **수평 선택**: `template/…`(결정적 PoC, 기본) · `ollama`·`vllm`·`lmstudio`·`openai/…`→openai-compatible(`/v1/chat/completions` 공통). 특정 기본 없음. 로컬/오픈웨이트는 Nous Hermes 류(함수호출·구조적 출력) 적합. 검증: resolve 분기 + template 경로 S1/S2/S3 유지.
+
+## 남은 (Phase A → B)
+
+- (2단계) 플래그십 데모 1 페이지 슬라이스로 같은 흐름 재현 → 실 evidence (플래그십 데모 선행)
+- drift-check CI 단계(GitHub Actions)
+- 라이브 LLM 연동 실측(openai-compatible 경로) — Phase B
 - estreux/create-estreux npm **가용성 확인만**(publish 는 Phase B, Q-EUX-3)

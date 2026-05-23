@@ -1,6 +1,6 @@
 @component notif-toggle
 @intent 알림 수신 on/off 토글 + 안 읽은 알림 개수 배지. 상태는 새로고침 후에도 유지.
-@expansion temperature=0.0 model=poc/deterministic-templater@v0 template=estreux/v0.0.1
+@expansion temperature=0.0 model=template/deterministic-templater@v0 template=estreux/v0.0.1
 @targets estreuv, estreui, pair
 
 @state
