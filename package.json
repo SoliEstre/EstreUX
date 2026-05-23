@@ -5,7 +5,7 @@
   "description": "EstreUX — .eux 자연어 중간 레이어 → EstreUI/EstreUV 다중(γ-driven) expansion. Phase A thin spike.",
   "type": "module",
   "bin": {
-    "estreux": "./spike/expand.mjs"
+    "estreux": "./bin/estreux.mjs"
   },
   "scripts": {
     "brew": "node spike/expand.mjs spike/notif-toggle.eux",

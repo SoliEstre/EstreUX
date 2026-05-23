@@ -16,6 +16,10 @@
 npm run brew     # (=expand 별칭) notif-toggle.eux → dist/{estreuv,estreui,pair}/notif-toggle.js
 npm run drift    # .eux ↔ 산출물 일관성 검사
 npm run spike    # brew + drift
+
+# 임의 .eux 대상 CLI (brew/expand/drift 서브명령):
+node bin/estreux.mjs brew  <file.eux>    # .eux → 변종 생성 (expand 별칭)
+node bin/estreux.mjs drift <file.eux>    # .eux ↔ 산출물 검사
 ```
 
 - 합성 예제: [`spike/notif-toggle.eux`](spike/notif-toggle.eux) (알림 토글 위젯)
