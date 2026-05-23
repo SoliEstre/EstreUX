@@ -1,0 +1,32 @@
+@component wordchain-story
+@intent AI 끝말잇기로 연속 스토리를 만드는 데모. 우측 2x2 카드가 시계방향(좌상→우상→우하→좌하)으로 1초마다 끝말잇기 단어를 갱신하며 회전한다. 카드를 클릭하면 그 단어의 원전 문장이 좌측 스토리(화면 절반 이상)에 위→아래로 누적되고 스무스 스크롤되며, 다음 문장 후보를 준비해 ~1.5초 뒤 끝말잇기를 재개한다. 하단 설정(provider·api key·언어·후보 수) 후 시작하면 첫 문장 후보를 생성해 시작한다. 런타임에 사용자가 고른 LLM provider 로 문장·후보를 생성한다(개발 시점 brew 와 별개).
+@expansion temperature=0.4 model=agent/claude template=estreux/v0.0.1
+@targets estreuv, estreui, pair
+
+@state
+running    : boolean = false   # 진행 중 여부 (시작 ↔ 일시정지)
+words      : string[] = []     # 현재 4개 카드 단어 (시계방향: 좌상·우상·우하·좌하)
+activeCell : number = 0        # 다음 갱신될 카드(시계방향 순환 좌상0→우상1→우하2→좌하3)
+story      : string[] = []     # 누적 문장 (위→아래, 새 문장은 맨 아래)
+candidates : number = 9        # 다음 문장 후보 생성 수 (하단에서 조정)
+provider   : string = ""       # LLM provider: agent | openai | ollama | vllm | lmstudio
+apiKey     : string = ""       # provider api key (agent 는 불필요)
+lang       : string = "browser"  # 출력 언어, 기본=브라우저 사용자 언어
+
+@behavior
+canStart : provider 가 설정되고 (provider 가 agent 이거나 apiKey 가 있을 때) true
+start    : canStart 면 첫 문장 후보를 생성하고 끝말잇기 회전을 시작. running=true
+toggle   : running 을 반전 — 시작 버튼이 일시정지 버튼을 겸한다. canStart 아니면 비활성
+rotate   : 1초마다 activeCell 위치 카드를 다음 끝말잇기 단어로 갱신하고 시계방향으로 다음 칸으로 이동
+pick(i)  : i번째 카드 단어의 원전 문장을 story 에 append + 스토리를 맨 아래로 스무스 스크롤 + 일시정지. 다음 문장 작성 대기가 없으면 ~1.5초 뒤 자동 재개
+nextCandidates : 현재 문장 다음에 이어질 문장 후보를 candidates 개 생성하고, 그 후보들에 포함된 단어로 끝말잇기 체인을 잇는다
+copy     : story 전체를 클립보드에 복사하고 일시정지
+share    : story 를 공유하고 일시정지
+
+@render
+좌측: 스토리 블록(화면 절반 이상). "지금까지의 스토리" 헤더 + 문장 카드가 위→아래로 누적되는 스크롤 영역. 새 문장은 맨 아래에 추가되며 스무스 스크롤.
+우측: 2x2 카드 그리드. 각 카드는 위치 라벨(좌상/우상/좌하/우하) + 큰 단어. 시계방향으로 회전하며 현재 갱신 카드는 active 강조(테두리). 클릭하면 picked 강조 + pick 동작.
+하단: 설정 바 — provider 선택, api key 입력(암호 처리), 언어 선택(브라우저 언어 기본), 문장 후보 수(기본 9). 그 우측에 시작/일시정지 토글 버튼(canStart 아니면 비활성).
+우측 상단: 복사·공유 버튼.
+
+@persist localStorage key=wordchain-story fields=lang,candidates,provider
