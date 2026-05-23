@@ -1,5 +1,5 @@
 // ┌─ estreux:expanded ──────────────────────────────────────────────
-// │ source : wordchain-story.eux  (sha256:b92a141521f6)
+// │ source : wordchain-story.eux  (sha256:2a36455f04be)
 // │ target : estreuv   provider : agent/claude
 // │ trio   : temp=0.4 model=agent/claude template=estreux/v0.0.1
 // │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run brew` 로 재생성 (drift-check 감시).
@@ -7,7 +7,7 @@
 import { EstreUVElement } from 'estreuv';
 import { html, css } from 'lit';
 
-// provider=agent 이거나 키 미설정 시 폴백 끝말잇기 체인(런타임 LLM stand-in)
+// provider=agent 이거나 키 미설정·실패 시 폴백 끝말잇기 후보(런타임 LLM stand-in)
 const FALLBACK = [
   { w: '사과', s: '노을이 지는 과수원에서 한 소년이 사과를 땄다.' },
   { w: '과수원', s: '그 과수원은 할머니가 평생을 가꾼 곳이었다.' },
@@ -27,20 +27,21 @@ const langName = l => l === 'en' ? '영어' : l === 'ja' ? '일본어' : '한국
 
 /**
  * <wordchain-story> — estreuv(micro-Rimwork, Lit) 단독 변종.
- * 우측 2x2 카드 시계방향 끝말잇기 회전, 카드 클릭 시 좌측 스토리에 원전 문장 누적(스무스 스크롤) + ~1.5초 자동 재개.
- * 하단 provider/key/모델/언어/후보수 설정, 시작=일시정지 토글(모델 선택까지 끝나야 활성), 우상단 복사·공유(클릭 시 일시정지).
- * provider(+key) 가 정해지면 #refreshModels 가 /v1/models 로 모델 목록을 받아 선택하게 하고,
- * 런타임 문장 생성은 #genChain 의 provider 분기(agent/미지원 → 폴백, openai-compatible → 선택 모델로 fetch)에서 처리.
+ * 우측 2x2 카드가 시계방향으로 후보 단어를 회전. 카드 클릭 시 그 문장이 좌측 스토리에 누적(스무스 스크롤)되고,
+ * 곧바로 누적 스토리(+직전 단어 끝글자 끝말잇기)를 입력으로 다음 후보를 새로 생성(#regenerate)해 회전 재개.
+ * 후보를 한 바퀴 다 노출하도록 선택이 없으면(무한 회전 방지) 안내 배너 + 3초 카운트(#exhausted) 후 새 후보 생성.
+ * 하단 provider/key/모델/언어/후보수 설정(모델 선택까지 끝나야 시작), 우상단 복사·공유(스토리 전체, 클릭 시 일시정지).
  */
 export class WordchainStory extends EstreUVElement {
   static properties = {
     running: { type: Boolean }, words: { state: true }, story: { state: true },
     activeCell: { type: Number }, candidates: { type: Number },
     provider: { type: String }, apiKey: { type: String }, lang: { type: String },
-    model: { type: String }, models: { state: true },
+    model: { type: String }, models: { state: true }, chain: { state: true }, banner: { state: true },
   };
   static styles = css`
     :host { display:flex; flex-direction:column; height:100%; color:var(--ink,#e7e9ea); font:15px/1.5 system-ui,"Noto Sans KR",sans-serif; }
+    .wc-banner { margin:0 18px; padding:9px 13px; background:rgba(217,162,59,.14); border:1px solid var(--active,#d9a23b); border-radius:10px; color:var(--active,#d9a23b); font-size:.84rem; }
     .wc { flex:1; min-height:0; display:flex; flex-direction:row-reverse; gap:18px; padding:18px; }
     @media (max-width:760px){ .wc { flex-direction:column; } }
     .wc-grid { display:grid; grid-template-columns:repeat(2,minmax(140px,200px)); gap:14px; align-self:center; }
@@ -65,10 +66,11 @@ export class WordchainStory extends EstreUVElement {
   constructor() {
     super();
     this.running = false; this.words = ['·', '·', '·', '·']; this.story = [];
-    this.activeCell = 0; this.candidates = 9; this.provider = ''; this.apiKey = '';
+    this.activeCell = -1; this.candidates = 9; this.provider = ''; this.apiKey = '';
     this.lang = (navigator.language || 'ko').slice(0, 2);
     this.model = ''; this.models = []; this._modelHint = '— provider 선택 —';
-    this._chain = []; this._pos = 0; this._cellWord = {}; this._picked = -1;
+    this.chain = []; this.lastWord = ''; this.banner = '';
+    this._pos = 0; this._order = 0; this._cellItem = {}; this._picked = -1;
     this.#load();
   }
   firstUpdated() { super.firstUpdated?.(); this.#refreshModels(); }
@@ -95,47 +97,96 @@ export class WordchainStory extends EstreUVElement {
     }
     this.requestUpdate();
   }
-  async start() {
+  start() {
     if (!this.canStart) return;
-    if (!this._chain.length) this._chain = await this.#genChain();
-    this.running = true; clearInterval(this._t); this._t = setInterval(() => this.#rotate(), 1000); this.#rotate();
+    this.running = true;
+    if (!this.chain.length) this.#regenerate();                                              // 첫 생성
+    else { clearInterval(this._t); this._t = setInterval(() => this.#rotate(), 1000); this.#rotate(); }   // 재개
   }
-  pause() { this.running = false; clearInterval(this._t); }
+  pause() { this.running = false; clearInterval(this._t); clearInterval(this._ct); }
   toggle() { this.running ? this.pause() : this.start(); }
+  #candCount() { return Math.max(4, +this.candidates || 9); }
+  // 1초마다 다음 후보를 시계방향 카드에 노출. 후보를 한 바퀴 다 노출하면(무한 회전 방지) exhausted.
   #rotate() {
-    const cell = ORDER[this._pos % 4], item = this._chain[this._pos % this._chain.length];
+    if (this._pos >= this.chain.length) { this.#exhausted(); return; }
+    const cell = ORDER[this._order % 4], item = this.chain[this._pos];
     const w = [...this.words]; w[cell] = item.w; this.words = w;
-    this._cellWord[cell] = item; this.activeCell = cell; this._pos++;
+    this._cellItem[cell] = item; this.activeCell = cell; this._picked = -1;
+    this._order++; this._pos++;
+  }
+  // 후보 소진(끝말잇기 막힘): 안내 배너 + 3초 카운트. 그 안에 선택 없으면 새 후보 생성.
+  #exhausted() {
+    clearInterval(this._t);
+    let n = 3;
+    const msg = () => `끝말잇기를 더 이어갈 단어가 없어요. 카드를 선택하거나 ${n}초 후 새 문장을 생성합니다…`;
+    this.banner = msg(); clearInterval(this._ct);
+    this._ct = setInterval(() => { n--; if (n <= 0) { clearInterval(this._ct); this.#regenerate(); } else this.banner = msg(); }, 1000);
+  }
+  // 누적 스토리(+직전 단어)를 입력으로 새 후보 N개 생성 후 회전 재시작.
+  async #regenerate() {
+    clearInterval(this._t); clearInterval(this._ct);
+    this.banner = '다음 문장 후보를 생성하는 중…';
+    let next; try { next = await this.#genChain(); } catch (e) { console.warn('LLM 실패 → 폴백:', e); next = this.#fallbackChain(); }
+    if (!this.running) { this.banner = ''; return; }   // 생성 중 정지됐으면 중단
+    this.chain = next; this._pos = 0; this._order = 0; this._cellItem = {}; this.banner = '';
+    clearInterval(this._t); this._t = setInterval(() => this.#rotate(), 1000); this.#rotate();
   }
   pick(cell) {
-    const item = this._cellWord[cell]; if (!item) return;
-    this._picked = cell; this.story = [...this.story, item.s]; this.pause();
+    const item = this._cellItem[cell]; if (!item) return;
+    clearInterval(this._t); clearInterval(this._ct);
+    this._picked = cell; this.story = [...this.story, item.s]; this.lastWord = item.w;
     this.updateComplete.then(() => { const b = this.renderRoot?.querySelector('.wc-lines'); if (b) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }); });
-    // 다음 문장 작성 대기가 없으면 ~1.5초 뒤 자동 재개
-    setTimeout(() => { if (this.canStart) { this.running = true; clearInterval(this._t); this._t = setInterval(() => this.#rotate(), 1000); } }, 1500);
+    if (this.running) this.#regenerate();   // 선택할 때마다 누적 스토리로 새 후보 N개
   }
-  // 런타임 끝말잇기 체인 생성: provider 분기. agent/미지원 → 폴백, openai-compatible → fetch.
+  // 폴백(LLM 실패·agent): lastWord 끝글자로 시작하는 항목 우선 정렬해 N개.
+  #fallbackChain() {
+    const n = this.#candCount();
+    if (!this.lastWord) return FALLBACK.slice(0, n);
+    const head = this.lastWord.slice(-1);
+    const m = FALLBACK.filter(x => x.w[0] === head), rest = FALLBACK.filter(x => x.w[0] !== head);
+    return [...m, ...rest].slice(0, n);
+  }
+  // 후보 생성: provider 분기. agent/미지원/실패 → 폴백, openai-compatible → fetch.
   async #genChain() {
-    if (this.provider === 'agent' || !BASE[this.provider]) return FALLBACK;
-    try { return await this.#llmChain(); } catch (e) { console.warn('LLM 실패 → 폴백 체인:', e); return FALLBACK; }
+    if (this.provider === 'agent' || !BASE[this.provider]) return this.#fallbackChain();
+    try { return await this.#llmChain(); } catch (e) { console.warn('LLM 실패 → 폴백 체인:', e); return this.#fallbackChain(); }
   }
-  // openai-compatible(/v1/chat/completions) — 끝말잇기 단어 candidates 개 + 이야기 문장 생성.
+  // openai-compatible(/v1/chat/completions) — 누적 스토리(+끝말잇기 제약)로 다음 후보 N개 생성.
   async #llmChain() {
-    const n = Math.max(4, +this.candidates || 9);
-    const prompt = `끝말잇기(앞 단어의 마지막 글자 = 다음 단어의 첫 글자) 규칙으로 이어지는 단어 ${n}개와, 각 단어가 자연스럽게 등장하며 하나로 이어지는 짧은 이야기 문장을 ${langName(this.lang)}로 만들어줘. 반드시 JSON 배열 [{"w":"단어","s":"문장"}] 형식만 출력(다른 설명 금지).`;
-    const r = await fetch(BASE[this.provider] + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(this.apiKey ? { Authorization: 'Bearer ' + this.apiKey } : {}) }, body: JSON.stringify({ model: this.model || MODEL[this.provider] || '', messages: [{ role: 'user', content: prompt }], temperature: 0.4 }) });
+    const n = this.#candCount();
+    const ctx = this.story.length ? this.story.map((s, i) => `${i + 1}. ${s}`).join('\n') : '(아직 없음 — 첫 문장)';
+    const rule = this.lastWord
+      ? `끝말잇기 규칙: 각 후보의 핵심 단어 w 는 반드시 '${this.lastWord.slice(-1)}' 글자로 시작해야 한다.`
+      : '각 후보는 서로 다른 핵심 단어로 시작한다.';
+    const prompt = `지금까지 이어진 이야기:\n${ctx}\n\n이 이야기에 자연스럽게 이어질 다음 문장 후보 ${n}개를 ${langName(this.lang)}로 만들어줘.\n${rule}\n각 후보는 {핵심 단어 w, 그 단어가 자연스럽게 등장하는 한 문장 s} 형식.\n반드시 JSON 배열 [{"w":"단어","s":"문장"}] 형식만 출력(다른 설명 금지).`;
+    const r = await fetch(BASE[this.provider] + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(this.apiKey ? { Authorization: 'Bearer ' + this.apiKey } : {}) }, body: JSON.stringify({ model: this.model || MODEL[this.provider] || '', messages: [{ role: 'user', content: prompt }], temperature: 0.6 }) });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json(); const t = d.choices?.[0]?.message?.content || '';
     const arr = JSON.parse(t.slice(t.indexOf('['), t.lastIndexOf(']') + 1)).filter(x => x && x.w && x.s);
     if (!arr.length) throw new Error('빈 응답'); return arr;
   }
+  #flash(m) { this.banner = m; clearTimeout(this._ft); this._ft = setTimeout(() => { this.banner = ''; }, 2400); }
+  // 복사·공유 = 누적 스토리 전체. 클릭 시 일시정지.
+  #copy() {
+    this.pause();
+    if (!this.story.length) { this.#flash('복사할 스토리가 아직 없어요.'); return; }
+    navigator.clipboard?.writeText(this.story.join('\n')).then(() => this.#flash('스토리 전체를 클립보드에 복사했어요.'), () => this.#flash('복사 실패 — 권한을 확인하세요.'));
+  }
+  async #share() {
+    this.pause();
+    if (!this.story.length) { this.#flash('공유할 스토리가 아직 없어요.'); return; }
+    const text = this.story.join('\n');
+    if (navigator.share) { try { await navigator.share({ title: '끝말잇기 스토리', text }); } catch { /* 사용자 취소 */ } }
+    else { try { await navigator.clipboard.writeText(text); this.#flash('공유 미지원 — 클립보드에 복사했어요.'); } catch { this.#flash('공유/복사 미지원.'); } }
+  }
   #set(k, v) { this[k] = v; if (['lang', 'candidates', 'provider'].includes(k)) this.#save(); }
   render() {
     return html`
       <div class="wc-head">
-        <button @click=${() => { this.pause(); navigator.clipboard?.writeText(this.story.join('\n')); }}>⧉ 복사</button>
-        <button @click=${() => { this.pause(); }}>↗ 공유</button>
+        <button @click=${() => this.#copy()}>⧉ 복사</button>
+        <button @click=${() => this.#share()}>↗ 공유</button>
       </div>
+      ${this.banner ? html`<div class="wc-banner">${this.banner}</div>` : ''}
       <div class="wc">
         <div class="wc-story">
           <h3>지금까지의 스토리 (위 → 아래)</h3>
