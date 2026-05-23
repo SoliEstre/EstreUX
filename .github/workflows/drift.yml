@@ -1,0 +1,22 @@
+name: drift-check
+
+# .eux ↔ 산출물(dist/*) 일관성을 CI 에서 강제. 로컬 pre-commit 훅과 동일 검사를
+# push·PR 에서도 돌려, .eux 만 바뀌고 재-brew 안 된 표류를 머지 전에 차단한다.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # drift-check.mjs 는 node 내장 모듈만 사용 → 의존성 설치 불필요
+      - name: drift-check — notif-toggle (spike)
+        run: node spike/drift-check.mjs spike/notif-toggle.eux
+      - name: drift-check — wordchain (examples)
+        run: node spike/drift-check.mjs examples/wordchain.eux
