@@ -1,5 +1,5 @@
 // ┌─ estreux:expanded ──────────────────────────────────────────────
-// │ source : wordchain-story.eux  (sha256:a614ce3acdd5)
+// │ source : wordchain-story.eux  (sha256:b92a141521f6)
 // │ target : estreuv   provider : agent/claude
 // │ trio   : temp=0.4 model=agent/claude template=estreux/v0.0.1
 // │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run brew` 로 재생성 (drift-check 감시).
@@ -20,8 +20,9 @@ const FALLBACK = [
 ];
 const POS = ['좌상', '우상', '좌하', '우하'];
 const ORDER = [0, 1, 3, 2];   // 시계방향 순환
-const BASE = { openai: 'https://api.openai.com/v1', ollama: 'http://localhost:11434/v1', vllm: 'http://localhost:8000/v1', lmstudio: 'http://localhost:1234/v1' };
-const MODEL = { openai: 'gpt-4o-mini', ollama: 'llama3.2', vllm: '', lmstudio: 'local-model' };
+const BASE = { openai: 'https://api.openai.com/v1', google: 'https://generativelanguage.googleapis.com/v1beta/openai', ollama: 'http://localhost:11434/v1', vllm: 'http://localhost:8000/v1', lmstudio: 'http://localhost:1234/v1' };
+const MODEL = { openai: 'gpt-4o-mini', google: 'gemini-2.0-flash', ollama: 'llama3.2', vllm: '', lmstudio: 'local-model' };
+const KEYLESS = new Set(['ollama', 'vllm', 'lmstudio']);   // 키 불요 로컬 provider — 그 외(openai·google)는 키 필요
 const langName = l => l === 'en' ? '영어' : l === 'ja' ? '일본어' : '한국어';
 
 /**
@@ -80,7 +81,7 @@ export class WordchainStory extends EstreUVElement {
     this.model = ''; this.models = [];
     if (this.provider === 'agent') { this._modelHint = '에이전트 자동'; this.requestUpdate(); return; }
     if (!BASE[this.provider]) { this._modelHint = '— provider 선택 —'; this.requestUpdate(); return; }
-    if (this.provider === 'openai' && !this.apiKey) { this._modelHint = '— API Key 입력 후 로드 —'; this.requestUpdate(); return; }
+    if (!KEYLESS.has(this.provider) && !this.apiKey) { this._modelHint = '— API Key 입력 후 로드 —'; this.requestUpdate(); return; }
     this._modelHint = '⏳ 모델 로드 중…'; this.requestUpdate();
     try {
       const r = await fetch(BASE[this.provider] + '/models', { headers: this.apiKey ? { Authorization: 'Bearer ' + this.apiKey } : {} });
@@ -151,7 +152,7 @@ export class WordchainStory extends EstreUVElement {
         <div><label>AI Provider</label>
           <select @change=${e => { this.#set('provider', e.target.value); this.#refreshModels(); }} .value=${this.provider}>
             <option value="">— 선택 —</option><option value="agent">agent (현재 에이전트)</option>
-            <option value="openai">openai</option><option value="ollama">ollama</option><option value="vllm">vllm</option><option value="lmstudio">lmstudio</option>
+            <option value="openai">openai</option><option value="google">google (gemini)</option><option value="ollama">ollama</option><option value="vllm">vllm</option><option value="lmstudio">lmstudio</option>
           </select></div>
         <div><label>API Key</label><input type="password" placeholder="sk-…" @input=${e => { this.apiKey = e.target.value; this.#scheduleModels(); }}></div>
         <div><label>모델</label>

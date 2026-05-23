@@ -9,14 +9,14 @@ words      : string[] = []     # 현재 4개 카드 단어 (시계방향: 좌상
 activeCell : number = 0        # 다음 갱신될 카드(시계방향 순환 좌상0→우상1→우하2→좌하3)
 story      : string[] = []     # 누적 문장 (위→아래, 새 문장은 맨 아래)
 candidates : number = 9        # 다음 문장 후보 생성 수 (하단에서 조정)
-provider   : string = ""       # LLM provider: agent | openai | ollama | vllm | lmstudio
-apiKey     : string = ""       # provider api key (agent·로컬 provider 는 불필요)
+provider   : string = ""       # LLM provider: agent | openai | google | ollama | vllm | lmstudio
+apiKey     : string = ""       # provider api key (agent·로컬 provider 는 불필요, openai·google 은 필요)
 model      : string = ""       # 선택된 LLM 모델 id (openai-compatible). agent 는 불필요
 models     : string[] = []     # provider(+key)로 /v1/models 에서 받은 사용 가능한 모델 목록
 lang       : string = "browser"  # 출력 언어, 기본=브라우저 사용자 언어
 
 @behavior
-refreshModels : provider 가 정해지고(openai 는 apiKey 도) 나면 provider 의 /v1/models 로 사용 가능한 모델 목록을 받아 models 를 채우고 기본 모델을 선택(model). agent 는 호출 없이 '에이전트 자동'. 목록 호출 실패 시 provider 기본 모델 1개로 폴백. provider·apiKey 변경 시 재호출
+refreshModels : provider 가 정해지고(클라우드 openai·google 은 apiKey 도) 나면 provider 의 OpenAI-호환 /models 엔드포인트로 사용 가능한 모델 목록을 받아 models 를 채우고 기본 모델을 선택(model). agent 는 호출 없이 '에이전트 자동', 로컬(ollama·vllm·lmstudio)은 키 없이 호출. 목록 호출 실패 시 provider 기본 모델 1개로 폴백. provider·apiKey 변경 시 재호출. (google = Gemini 의 OpenAI-호환 레이어 /v1beta/openai)
 canStart : provider 가 agent 이거나, (openai-compatible provider 이고 model 이 선택됐을 때) true — 모델 선택까지 끝나야 시작 가능
 start    : canStart 면 선택된 model 로 첫 문장 후보를 생성하고 끝말잇기 회전을 시작. running=true
 toggle   : running 을 반전 — 시작 버튼이 일시정지 버튼을 겸한다. canStart 아니면 비활성

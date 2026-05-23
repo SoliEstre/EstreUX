@@ -1,5 +1,5 @@
 // ┌─ estreux:expanded ──────────────────────────────────────────────
-// │ source : wordchain-story.eux  (sha256:a614ce3acdd5)
+// │ source : wordchain-story.eux  (sha256:b92a141521f6)
 // │ target : estreui   provider : agent/claude
 // │ trio   : temp=0.4 model=agent/claude template=estreux/v0.0.1
 // │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run brew` 로 재생성 (drift-check 감시).
@@ -19,8 +19,9 @@ const FALLBACK = [
 ];
 const POS = ['좌상', '우상', '좌하', '우하'];
 const ORDER = [0, 1, 3, 2];   // 시계방향
-const BASE = { openai: 'https://api.openai.com/v1', ollama: 'http://localhost:11434/v1', vllm: 'http://localhost:8000/v1', lmstudio: 'http://localhost:1234/v1' };
-const MODEL = { openai: 'gpt-4o-mini', ollama: 'llama3.2', vllm: '', lmstudio: 'local-model' };
+const BASE = { openai: 'https://api.openai.com/v1', google: 'https://generativelanguage.googleapis.com/v1beta/openai', ollama: 'http://localhost:11434/v1', vllm: 'http://localhost:8000/v1', lmstudio: 'http://localhost:1234/v1' };
+const MODEL = { openai: 'gpt-4o-mini', google: 'gemini-2.0-flash', ollama: 'llama3.2', vllm: '', lmstudio: 'local-model' };
+const KEYLESS = new Set(['ollama', 'vllm', 'lmstudio']);   // 키 불요 로컬 provider — 그 외(openai·google)는 키 필요
 const langName = l => l === 'en' ? '영어' : l === 'ja' ? '일본어' : '한국어';
 
 /**
@@ -42,7 +43,7 @@ export function wordchainStory(host) {
     st.model = ''; st.models = [];
     if (st.provider === 'agent') { st._modelHint = '에이전트 자동'; paintModels(); paintFoot(); return; }
     if (!BASE[st.provider]) { st._modelHint = '— provider 선택 —'; paintModels(); paintFoot(); return; }
-    if (st.provider === 'openai' && !st.apiKey) { st._modelHint = '— API Key 입력 후 로드 —'; paintModels(); paintFoot(); return; }
+    if (!KEYLESS.has(st.provider) && !st.apiKey) { st._modelHint = '— API Key 입력 후 로드 —'; paintModels(); paintFoot(); return; }
     st._modelHint = '⏳ 모델 로드 중…'; paintModels(); paintFoot();
     try {
       const r = await fetch(BASE[st.provider] + '/models', { headers: st.apiKey ? { Authorization: 'Bearer ' + st.apiKey } : {} });
@@ -113,7 +114,7 @@ export function wordchainStory(host) {
         <div class="wc-head"><button id="copy">⧉ 복사</button><button id="share">↗ 공유</button></div>
         <div class="wc"><div class="wc-story"><h3 style="margin:0 0 8px;font-size:.8rem;color:var(--muted,#9aa3ad)">지금까지의 스토리 (위 → 아래)</h3>${storyHtml()}</div>${gridHtml()}</div>
         <div class="wc-foot">
-          <div><label>AI Provider</label><select id="provider"><option value="">— 선택 —</option><option value="agent">agent (현재 에이전트)</option><option value="openai">openai</option><option value="ollama">ollama</option><option value="vllm">vllm</option><option value="lmstudio">lmstudio</option></select></div>
+          <div><label>AI Provider</label><select id="provider"><option value="">— 선택 —</option><option value="agent">agent (현재 에이전트)</option><option value="openai">openai</option><option value="google">google (gemini)</option><option value="ollama">ollama</option><option value="vllm">vllm</option><option value="lmstudio">lmstudio</option></select></div>
           <div><label>API Key</label><input id="key" type="password" placeholder="sk-…"></div>
           <div><label>모델</label><select id="model" disabled><option value="">— provider 선택 —</option></select></div>
           <div><label>언어</label><select id="lang"><option value="ko">한국어</option><option value="en">English</option><option value="ja">日本語</option></select></div>
