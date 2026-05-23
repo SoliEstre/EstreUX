@@ -8,6 +8,7 @@
     "estreux": "./spike/expand.mjs"
   },
   "scripts": {
+    "brew": "node spike/expand.mjs spike/notif-toggle.eux",
     "expand": "node spike/expand.mjs spike/notif-toggle.eux",
     "drift": "node spike/drift-check.mjs spike/notif-toggle.eux",
     "spike": "node spike/expand.mjs spike/notif-toggle.eux && node spike/drift-check.mjs spike/notif-toggle.eux",

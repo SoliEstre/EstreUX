@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * estreux expand — Phase A thin spike PoC expander.
+ * estreux brew — Phase A thin spike PoC expander (정식 명령 `brew`, `expand` 는 호환 별칭).
  *
  * 하나의 `.eux` 자연어 중간 소스 → `@targets` 에 명시된 다중 타깃(estreuv / estreui / pair)
  * 코드로 γ-driven expansion. 각 산출물에 provenance 헤더(source sha + trio)를 박아
@@ -16,8 +16,10 @@ import { createHash } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { resolveProvider, parseModel } from './providers/index.mjs';
 
-const euxPath = process.argv[2];
-if (!euxPath) { console.error('usage: expand.mjs <file.eux>'); process.exit(2); }
+let _args = process.argv.slice(2);
+if (_args[0] === 'brew' || _args[0] === 'expand') _args = _args.slice(1);   // 서브명령 별칭 (brew = 정식, expand = 호환)
+const euxPath = _args[0];
+if (!euxPath) { console.error('usage: estreux brew <file.eux>   (별칭: expand)'); process.exit(2); }
 
 const raw = readFileSync(euxPath, 'utf8');
 const sha = createHash('sha256').update(raw).digest('hex').slice(0, 12);
@@ -61,7 +63,7 @@ function header(targetId, providerId) {
     `// │ source : ${spec.component}.eux  (sha256:${sha})`,
     `// │ target : ${targetId}   provider : ${providerId}`,
     `// │ trio   : ${trio}`,
-    '// │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run expand` 로 재생성 (drift-check 감시).',
+    '// │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run brew` 로 재생성 (drift-check 감시).',
     '// └─────────────────────────────────────────────────────────────────',
     '',
   ].join('\n');
@@ -88,7 +90,7 @@ for (const id of spec.targets) {
   written.push({ id, out });
 }
 const ms = Date.now() - t0;
-console.log(`estreux expand — ${spec.component}.eux (sha256:${sha}) · provider=${provider.id}`);
+console.log(`estreux brew — ${spec.component}.eux (sha256:${sha}) · provider=${provider.id}`);
 console.log(`  trio: ${trio}`);
 for (const w of written) console.log(`  ✓ ${w.id.padEnd(8)} → ${w.out.replace(baseDir + '/', '').replace(baseDir + '\\', '')}`);
 console.log(`  ${written.length} targets in ${ms}ms`);

@@ -2,7 +2,7 @@
 // │ source : notif-toggle.eux  (sha256:5f22b106a337)
 // │ target : pair   provider : template
 // │ trio   : temp=0.0 model=template/deterministic-templater@v0 template=estreux/v0.0.1
-// │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run expand` 로 재생성 (drift-check 감시).
+// │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run brew` 로 재생성 (drift-check 감시).
 // └─────────────────────────────────────────────────────────────────
 import './../estreuv/notif-toggle.js';
 
