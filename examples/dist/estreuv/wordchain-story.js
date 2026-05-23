@@ -1,5 +1,5 @@
 // ┌─ estreux:expanded ──────────────────────────────────────────────
-// │ source : wordchain-story.eux  (sha256:2a36455f04be)
+// │ source : wordchain-story.eux  (sha256:23df81a6cce9)
 // │ target : estreuv   provider : agent/claude
 // │ trio   : temp=0.4 model=agent/claude template=estreux/v0.0.1
 // │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run brew` 로 재생성 (drift-check 감시).
@@ -7,7 +7,7 @@
 import { EstreUVElement } from 'estreuv';
 import { html, css } from 'lit';
 
-// provider=agent 이거나 키 미설정·실패 시 폴백 끝말잇기 후보(런타임 LLM stand-in)
+// provider=agent 이거나 키 미설정·실패 시 폴백 후보 풀(런타임 LLM stand-in)
 const FALLBACK = [
   { w: '사과', s: '노을이 지는 과수원에서 한 소년이 사과를 땄다.' },
   { w: '과수원', s: '그 과수원은 할머니가 평생을 가꾼 곳이었다.' },
@@ -24,13 +24,27 @@ const BASE = { openai: 'https://api.openai.com/v1', google: 'https://generativel
 const MODEL = { openai: 'gpt-4o-mini', google: 'gemini-2.0-flash', ollama: 'llama3.2', vllm: '', lmstudio: 'local-model' };
 const KEYLESS = new Set(['ollama', 'vllm', 'lmstudio']);   // 키 불요 로컬 provider — 그 외(openai·google)는 키 필요
 const langName = l => l === 'en' ? '영어' : l === 'ja' ? '일본어' : '한국어';
+const lastChar = w => (w || '').trim().slice(-1);
+// 후보 단어들을 끝말잇기 순서(앞 끝글자 = 다음 첫글자)로 정렬. 막히면 남은 단어 중 새 시작 — 이미 노출한 단어는 제외되는 효과. ('끝말잇기 = 변수 생성')
+function chainOrder(items) {
+  const pool = items.slice(), order = [];
+  if (!pool.length) return order;
+  order.push(pool.shift());
+  while (pool.length) {
+    const head = lastChar(order[order.length - 1].w);
+    let idx = pool.findIndex(it => it.w[0] === head);
+    if (idx < 0) idx = 0;
+    order.push(pool.splice(idx, 1)[0]);
+  }
+  return order;
+}
 
 /**
  * <wordchain-story> — estreuv(micro-Rimwork, Lit) 단독 변종.
- * 우측 2x2 카드가 시계방향으로 후보 단어를 회전. 카드 클릭 시 그 문장이 좌측 스토리에 누적(스무스 스크롤)되고,
- * 곧바로 누적 스토리(+직전 단어 끝글자 끝말잇기)를 입력으로 다음 후보를 새로 생성(#regenerate)해 회전 재개.
- * 후보를 한 바퀴 다 노출하도록 선택이 없으면(무한 회전 방지) 안내 배너 + 3초 카운트(#exhausted) 후 새 후보 생성.
- * 하단 provider/key/모델/언어/후보수 설정(모델 선택까지 끝나야 시작), 우상단 복사·공유(스토리 전체, 클릭 시 일시정지).
+ * 매 호출마다 LLM 이 다음 문장 후보 N개({핵심 단어 명사, 문장})를 생성하고, 클라이언트가 그 단어들을
+ * 끝말잇기 순서로 정렬해 카드에 회전(끝말잇기 = 변수 생성). 카드 클릭 시 그 문장이 스토리에 누적되고,
+ * 스토리 전체(+고른 단어 힌트)를 입력으로 다음 후보를 생성. 단어를 모두 소진하면 안내 + 3초 후 자동 재생성.
+ * 🔄 재생성·🗑 초기화·복사·공유(스토리 전체) 제공. 모델 선택까지 끝나야 시작 가능.
  */
 export class WordchainStory extends EstreUVElement {
   static properties = {
@@ -70,13 +84,14 @@ export class WordchainStory extends EstreUVElement {
     this.lang = (navigator.language || 'ko').slice(0, 2);
     this.model = ''; this.models = []; this._modelHint = '— provider 선택 —';
     this.chain = []; this.lastWord = ''; this.banner = '';
-    this._pos = 0; this._order = 0; this._cellItem = {}; this._picked = -1;
+    this._seq = []; this._pos = 0; this._cellItem = {}; this._picked = -1;
     this.#load();
   }
   firstUpdated() { super.firstUpdated?.(); this.#refreshModels(); }
   #load() { try { const s = JSON.parse(localStorage.getItem('wordchain-story') || '{}'); ['lang', 'candidates', 'provider'].forEach(k => k in s && (this[k] = s[k])); } catch {} }
   #save() { localStorage.setItem('wordchain-story', JSON.stringify({ lang: this.lang, candidates: this.candidates, provider: this.provider })); }
   get canStart() { return this.provider === 'agent' || (!!BASE[this.provider] && !!this.model); }
+  #candCount() { return Math.max(4, +this.candidates || 9); }
   // provider(+key) 가 정해지면 /v1/models 로 사용 가능한 모델 목록을 받아 채운다. 실패 시 기본 모델 1개로 폴백.
   #scheduleModels() { clearTimeout(this._mt); this._mt = setTimeout(() => this.#refreshModels(), 600); }
   async #refreshModels() {
@@ -100,35 +115,34 @@ export class WordchainStory extends EstreUVElement {
   start() {
     if (!this.canStart) return;
     this.running = true;
-    if (!this.chain.length) this.#regenerate();                                              // 첫 생성
+    if (!this._seq.length) this.#regenerate();                                              // 첫 생성
     else { clearInterval(this._t); this._t = setInterval(() => this.#rotate(), 1000); this.#rotate(); }   // 재개
   }
   pause() { this.running = false; clearInterval(this._t); clearInterval(this._ct); }
   toggle() { this.running ? this.pause() : this.start(); }
-  #candCount() { return Math.max(4, +this.candidates || 9); }
-  // 1초마다 다음 후보를 시계방향 카드에 노출. 후보를 한 바퀴 다 노출하면(무한 회전 방지) exhausted.
+  // 1초마다 끝말잇기 순서(_seq)대로 다음 단어를 시계방향 카드에 노출. 단어를 모두 소진하면 exhausted.
   #rotate() {
-    if (this._pos >= this.chain.length) { this.#exhausted(); return; }
-    const cell = ORDER[this._order % 4], item = this.chain[this._pos];
+    if (this._pos >= this._seq.length) { this.#exhausted(); return; }
+    const cell = ORDER[this._pos % 4], item = this._seq[this._pos];
     const w = [...this.words]; w[cell] = item.w; this.words = w;
     this._cellItem[cell] = item; this.activeCell = cell; this._picked = -1;
-    this._order++; this._pos++;
+    this._pos++;
   }
-  // 후보 소진(끝말잇기 막힘): 안내 배너 + 3초 카운트. 그 안에 선택 없으면 새 후보 생성.
+  // 후보 단어를 모두 노출(소진): 안내 배너 + 3초 카운트. 그 안에 선택 없으면 새 후보 생성(여기서만 API 재호출).
   #exhausted() {
     clearInterval(this._t);
     let n = 3;
-    const msg = () => `끝말잇기를 더 이어갈 단어가 없어요. 카드를 선택하거나 ${n}초 후 새 문장을 생성합니다…`;
+    const msg = () => `후보 단어를 모두 보여줬어요. 카드를 고르거나 🔄 재생성, 또는 ${n}초 후 자동으로 새 후보를 생성합니다…`;
     this.banner = msg(); clearInterval(this._ct);
     this._ct = setInterval(() => { n--; if (n <= 0) { clearInterval(this._ct); this.#regenerate(); } else this.banner = msg(); }, 1000);
   }
-  // 누적 스토리(+직전 단어)를 입력으로 새 후보 N개 생성 후 회전 재시작.
+  // 스토리 전체(+고른 단어)를 입력으로 새 후보 N개 생성 → 끝말잇기 순서로 정렬해 회전 재시작.
   async #regenerate() {
     clearInterval(this._t); clearInterval(this._ct);
-    this.banner = '다음 문장 후보를 생성하는 중…';
+    this.running = true; this.banner = '다음 문장 후보를 생성하는 중…';
     let next; try { next = await this.#genChain(); } catch (e) { console.warn('LLM 실패 → 폴백:', e); next = this.#fallbackChain(); }
     if (!this.running) { this.banner = ''; return; }   // 생성 중 정지됐으면 중단
-    this.chain = next; this._pos = 0; this._order = 0; this._cellItem = {}; this.banner = '';
+    this.chain = next; this._seq = chainOrder(next); this._pos = 0; this._cellItem = {}; this.banner = '';
     clearInterval(this._t); this._t = setInterval(() => this.#rotate(), 1000); this.#rotate();
   }
   pick(cell) {
@@ -136,30 +150,27 @@ export class WordchainStory extends EstreUVElement {
     clearInterval(this._t); clearInterval(this._ct);
     this._picked = cell; this.story = [...this.story, item.s]; this.lastWord = item.w;
     this.updateComplete.then(() => { const b = this.renderRoot?.querySelector('.wc-lines'); if (b) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' }); });
-    if (this.running) this.#regenerate();   // 선택할 때마다 누적 스토리로 새 후보 N개
+    if (this.running) this.#regenerate();   // 선택할 때마다 스토리 전체로 다음 후보 N개
   }
-  // 폴백(LLM 실패·agent): lastWord 끝글자로 시작하는 항목 우선 정렬해 N개.
-  #fallbackChain() {
-    const n = this.#candCount();
-    if (!this.lastWord) return FALLBACK.slice(0, n);
-    const head = this.lastWord.slice(-1);
-    const m = FALLBACK.filter(x => x.w[0] === head), rest = FALLBACK.filter(x => x.w[0] !== head);
-    return [...m, ...rest].slice(0, n);
+  // 🗑 — 스토리·후보를 비우고 정지.
+  reset() {
+    this.pause(); this.story = []; this.chain = []; this._seq = []; this._pos = 0; this.lastWord = ''; this._cellItem = {};
+    this.words = ['·', '·', '·', '·']; this.activeCell = -1; this._picked = -1; this.banner = '';
   }
+  // 폴백(LLM 실패·agent): 미리 만든 후보 풀에서 N개(부족하면 순환).
+  #fallbackChain() { const n = this.#candCount(); const out = []; for (let i = 0; i < n; i++) out.push(FALLBACK[i % FALLBACK.length]); return out; }
   // 후보 생성: provider 분기. agent/미지원/실패 → 폴백, openai-compatible → fetch.
   async #genChain() {
     if (this.provider === 'agent' || !BASE[this.provider]) return this.#fallbackChain();
     try { return await this.#llmChain(); } catch (e) { console.warn('LLM 실패 → 폴백 체인:', e); return this.#fallbackChain(); }
   }
-  // openai-compatible(/v1/chat/completions) — 누적 스토리(+끝말잇기 제약)로 다음 후보 N개 생성.
+  // openai-compatible(/v1/chat/completions) — 스토리 전체(+고른 단어)로 다음 후보 N개 {명사, 문장} 생성.
   async #llmChain() {
     const n = this.#candCount();
     const ctx = this.story.length ? this.story.map((s, i) => `${i + 1}. ${s}`).join('\n') : '(아직 없음 — 첫 문장)';
-    const rule = this.lastWord
-      ? `끝말잇기 규칙: 각 후보의 핵심 단어 w 는 반드시 '${this.lastWord.slice(-1)}' 글자로 시작해야 한다.`
-      : '각 후보는 서로 다른 핵심 단어로 시작한다.';
-    const prompt = `지금까지 이어진 이야기:\n${ctx}\n\n이 이야기에 자연스럽게 이어질 다음 문장 후보 ${n}개를 ${langName(this.lang)}로 만들어줘.\n${rule}\n각 후보는 {핵심 단어 w, 그 단어가 자연스럽게 등장하는 한 문장 s} 형식.\n반드시 JSON 배열 [{"w":"단어","s":"문장"}] 형식만 출력(다른 설명 금지).`;
-    const r = await fetch(BASE[this.provider] + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(this.apiKey ? { Authorization: 'Bearer ' + this.apiKey } : {}) }, body: JSON.stringify({ model: this.model || MODEL[this.provider] || '', messages: [{ role: 'user', content: prompt }], temperature: 0.6 }) });
+    const hint = this.lastWord ? `\n방금 사용자가 '${this.lastWord}' 단어를 골랐다. 자연스럽다면 이를 실마리로 삼아도 좋다.` : '';
+    const prompt = `지금까지 이어진 이야기:\n${ctx}${hint}\n\n이 이야기에 자연스럽게 이어질 "다음 문장" 후보 ${n}개를 ${langName(this.lang)}로 만들어줘.\n- 각 후보 = { 핵심 단어 w, 그 단어가 등장하는 충분히 풍부한 한 문장 s }\n- w 는 조사·어미를 뗀 사전형 명사 한 단어로 (예: '폭우가'가 아니라 '폭우', '열차는'이 아니라 '열차').\n- 후보들의 w 는 서로 겹치지 않게 다양하게.\n반드시 JSON 배열 [{"w":"단어","s":"문장"}] 형식만 출력(다른 설명 금지).`;
+    const r = await fetch(BASE[this.provider] + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(this.apiKey ? { Authorization: 'Bearer ' + this.apiKey } : {}) }, body: JSON.stringify({ model: this.model || MODEL[this.provider] || '', messages: [{ role: 'user', content: prompt }], temperature: 0.7 }) });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json(); const t = d.choices?.[0]?.message?.content || '';
     const arr = JSON.parse(t.slice(t.indexOf('['), t.lastIndexOf(']') + 1)).filter(x => x && x.w && x.s);
@@ -183,6 +194,8 @@ export class WordchainStory extends EstreUVElement {
   render() {
     return html`
       <div class="wc-head">
+        <button @click=${() => this.#regenerate()}>🔄 재생성</button>
+        <button @click=${() => this.reset()}>🗑 초기화</button>
         <button @click=${() => this.#copy()}>⧉ 복사</button>
         <button @click=${() => this.#share()}>↗ 공유</button>
       </div>
