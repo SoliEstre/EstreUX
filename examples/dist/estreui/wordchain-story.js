@@ -4,7 +4,13 @@
 // │ trio   : temp=0.4 model=agent/claude template=estreux/v0.0.1
 // │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run brew` 로 재생성 (drift-check 감시).
 // └─────────────────────────────────────────────────────────────────
-import { EstreUI } from 'estreui';
+//
+// estreui (macro-Rimwork) 변종 — EstreUI 페이지 시스템에 article 로 마운트한다.
+// EstreUI 는 export 없는 classic-script 프레임워크이므로, v1.5.1+ 가 window 에 노출한
+// 페이지 표면(EstrePageHandler / EstreUiCustomPageManager)을 module-realm 에서 가져온다.
+// 페이지 내부 DOM 은 EstreUI 관례대로 jQuery(handle.$host)로 그린다(끝말잇기/LLM 로직은
+// estreuv 변종과 동일한 공통부).
+const { EstrePageHandler, EstreUiCustomPageManager } = window;
 
 // provider=agent 이거나 키 미설정·실패 시 폴백 후보 풀(런타임 LLM stand-in)
 const FALLBACK = [
@@ -39,13 +45,14 @@ function chainOrder(items) {
 }
 
 /**
- * wordchainStory — EstreUI(macro-Rimwork, jQuery-class primitive) 단독 변종.
- * 매 호출마다 LLM 이 다음 문장 후보 N개({핵심 단어 명사, 문장})를 생성하고, 클라이언트가 그 단어들을
+ * buildWordchainStory — EstreUI article 의 jQuery 호스트($host)에 끝말잇기 스토리 UI 를 빌드한다.
+ * 매 생성마다 LLM 이 다음 문장 후보 N개({핵심 단어 명사, 문장})를 만들고, 클라이언트가 그 단어들을
  * 끝말잇기 순서로 정렬해 카드에 회전(끝말잇기 = 변수 생성). 카드 클릭 시 그 문장이 스토리에 누적되고,
  * 스토리 전체(+고른 단어 힌트)를 입력으로 다음 후보를 생성. 단어를 모두 소진하면 안내 + 3초 후 자동 재생성.
  * 1회 렌더 후 카드/스토리/모델/배너 영역만 부분 갱신. 🔄 재생성·🗑 초기화·복사·공유(스토리 전체) 제공.
+ * EstreUI 페이지 내부이므로 DOM 조작은 전부 jQuery($host) — EstreUI 의 macro-Rimwork 관례.
  */
-export function wordchainStory(host) {
+function buildWordchainStory($host) {
   const st = { running: false, words: ['·', '·', '·', '·'], story: [], active: -1, candidates: 9, provider: '', apiKey: '', model: '', models: [], _modelHint: '— provider 선택 —', lang: (navigator.language || 'ko').slice(0, 2), chain: [], order: [], pos: 0, lastWord: '', _cellItem: {}, _picked: -1, _t: null, _ct: null, _ft: null };
   try { const s = JSON.parse(localStorage.getItem('wordchain-story') || '{}'); ['lang', 'candidates', 'provider'].forEach(k => k in s && (st[k] = s[k])); } catch {}
   const save = () => localStorage.setItem('wordchain-story', JSON.stringify({ lang: st.lang, candidates: st.candidates, provider: st.provider }));
@@ -99,6 +106,8 @@ export function wordchainStory(host) {
   }
   function pause() { st.running = false; clearInterval(st._t); clearInterval(st._ct); paintFoot(); }
   function toggle() { st.running ? pause() : start(); }
+  // 페이지 해제(onClose) 시 모든 타이머 정리.
+  function dispose() { st.running = false; clearInterval(st._t); clearInterval(st._ct); clearTimeout(st._ft); clearTimeout(modelTimer); }
   // 1초마다 끝말잇기 순서(order)대로 다음 단어를 시계방향 카드에 노출. 단어를 모두 소진하면 exhausted.
   function rotate() {
     if (st.pos >= st.order.length) { exhausted(); return; }
@@ -127,7 +136,7 @@ export function wordchainStory(host) {
     const item = st._cellItem[cell]; if (!item) return;
     clearInterval(st._t); clearInterval(st._ct);
     st._picked = cell; st.story.push(item.s); st.lastWord = item.w; paintGrid(); paintStory();
-    const b = EstreUI(host).find('.wc-lines')[0]; if (b) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' });
+    const b = $host.find('.wc-lines')[0]; if (b) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' });
     if (st.running) countdownThen(n => `'${item.w}' 선택됨 — ${n}초 후 다음 문장 후보를 생성합니다…`);   // 3초 카운트 후 생성
   }
   // 🗑 — 스토리·후보를 비우고 정지.
@@ -137,8 +146,8 @@ export function wordchainStory(host) {
     paintGrid(); paintStory(); hideBanner();
   }
 
-  function showBanner(m) { const b = EstreUI(host).find('#banner')[0]; if (b) { b.textContent = m; b.hidden = false; } }
-  function hideBanner() { const b = EstreUI(host).find('#banner')[0]; if (b) b.hidden = true; }
+  function showBanner(m) { const b = $host.find('#banner')[0]; if (b) { b.textContent = m; b.hidden = false; } }
+  function hideBanner() { const b = $host.find('#banner')[0]; if (b) b.hidden = true; }
   function flash(m) { showBanner(m); clearTimeout(st._ft); st._ft = setTimeout(hideBanner, 2400); }
   // 복사·공유 = 누적 스토리 전체. 클릭 시 일시정지.
   function doCopy() {
@@ -154,13 +163,13 @@ export function wordchainStory(host) {
 
   const gridHtml = () => `<div class="wc-grid">${[0, 1, 2, 3].map(i => `<div class="wc-card ${st.active === i ? 'active' : ''} ${st._picked === i ? 'picked' : ''}" data-cell="${i}"><span class="wc-pos">${POS[i]}</span><span class="wc-word">${st.words[i]}</span></div>`).join('')}</div>`;
   const storyHtml = () => `<div class="wc-lines">${st.story.length ? st.story.map(s => `<div class="wc-line">${s}</div>`).join('') : '<div class="wc-line" style="border-left-color:var(--muted,#9aa3ad);opacity:.7">시작 후 카드를 고르면 그 문장이 여기 쌓입니다.</div>'}</div>`;
-  function paintGrid() { const g = EstreUI(host).find('.wc-grid')[0]; if (g) g.outerHTML = gridHtml(); bindCards(); }
-  function paintStory() { const l = EstreUI(host).find('.wc-lines')[0]; if (l) l.outerHTML = storyHtml(); }
-  function paintFoot() { const t = EstreUI(host).find('#toggle')[0]; if (t) { t.textContent = st.running ? '⏸ 일시정지' : '▶ 시작'; t.disabled = !canStart(); t.className = st.running ? 'running' : ''; } }
-  function paintModels() { const m = EstreUI(host).find('#model')[0]; if (!m) return; if (st.models.length) { m.innerHTML = st.models.map(id => `<option value="${id}"${id === st.model ? ' selected' : ''}>${id}</option>`).join(''); m.disabled = false; m.value = st.model; } else { m.innerHTML = `<option value="">${st._modelHint}</option>`; m.disabled = true; } }
-  function bindCards() { EstreUI(host).find('.wc-card').on('click', e => pick(+e.currentTarget.dataset.cell)); }
+  function paintGrid() { const g = $host.find('.wc-grid')[0]; if (g) g.outerHTML = gridHtml(); bindCards(); }
+  function paintStory() { const l = $host.find('.wc-lines')[0]; if (l) l.outerHTML = storyHtml(); }
+  function paintFoot() { const t = $host.find('#toggle')[0]; if (t) { t.textContent = st.running ? '⏸ 일시정지' : '▶ 시작'; t.disabled = !canStart(); t.className = st.running ? 'running' : ''; } }
+  function paintModels() { const m = $host.find('#model')[0]; if (!m) return; if (st.models.length) { m.innerHTML = st.models.map(id => `<option value="${id}"${id === st.model ? ' selected' : ''}>${id}</option>`).join(''); m.disabled = false; m.value = st.model; } else { m.innerHTML = `<option value="">${st._modelHint}</option>`; m.disabled = true; } }
+  function bindCards() { $host.find('.wc-card').on('click', e => pick(+e.currentTarget.dataset.cell)); }
   function renderOnce() {
-    EstreUI(host).html(`
+    $host.html(`
       <style>
         .wc-root{display:flex;flex-direction:column;height:100%;font:15px/1.5 system-ui,"Noto Sans KR",sans-serif}
         .wc-head{display:flex;gap:8px;justify-content:flex-end;padding:10px 18px 0}
@@ -198,20 +207,44 @@ export function wordchainStory(host) {
           <button id="toggle" disabled>▶ 시작</button>
         </div>
       </div>`);
-    const $ = sel => EstreUI(host).find(sel)[0];
-    $('#provider').value = st.provider; $('#lang').value = st.lang;
-    EstreUI(host).find('#provider').on('change', e => { st.provider = e.target.value; save(); refreshModels(); });
-    EstreUI(host).find('#key').on('input', e => { st.apiKey = e.target.value; scheduleModels(); });
-    EstreUI(host).find('#model').on('change', e => { st.model = e.target.value; paintFoot(); });
-    EstreUI(host).find('#lang').on('change', e => { st.lang = e.target.value; save(); });
-    EstreUI(host).find('#cand').on('input', e => { st.candidates = +e.target.value; save(); });
-    EstreUI(host).find('#toggle').on('click', toggle);
-    EstreUI(host).find('#regen').on('click', () => generate());
-    EstreUI(host).find('#reset').on('click', reset);
-    EstreUI(host).find('#copy').on('click', doCopy);
-    EstreUI(host).find('#share').on('click', doShare);
+    const q = sel => $host.find(sel)[0];
+    q('#provider').value = st.provider; q('#lang').value = st.lang;
+    $host.find('#provider').on('change', e => { st.provider = e.target.value; save(); refreshModels(); });
+    $host.find('#key').on('input', e => { st.apiKey = e.target.value; scheduleModels(); });
+    $host.find('#model').on('change', e => { st.model = e.target.value; paintFoot(); });
+    $host.find('#lang').on('change', e => { st.lang = e.target.value; save(); });
+    $host.find('#cand').on('input', e => { st.candidates = +e.target.value; save(); });
+    $host.find('#toggle').on('click', toggle);
+    $host.find('#regen').on('click', () => generate());
+    $host.find('#reset').on('click', reset);
+    $host.find('#copy').on('click', doCopy);
+    $host.find('#share').on('click', doShare);
     bindCards(); refreshModels();
   }
   renderOnce();
-  return { start, pause, toggle, generate, reset, get state() { return st; } };
+  return { start, pause, toggle, generate, reset, dispose, get state() { return st; } };
+}
+
+/**
+ * EstreUI 페이지 핸들러 — onBring 에서 article($host)에 UI 를 빌드, onClose 에서 타이머 정리.
+ * EstreUI 라이프사이클(onShow/onHide/onFocus 등)은 필요에 따라 페이지 외부 컨트롤로 확장 가능.
+ */
+class WordchainStoryHandler extends EstrePageHandler {
+  onBring(handle) { this._wc = buildWordchainStory(handle.$host); }
+  onClose(handle) { this._wc?.dispose?.(); }
+}
+
+export const WORDCHAIN_STORY_ALIAS = 'wordchainStory';
+export const WORDCHAIN_STORY_PID = '$s&m=wordchainStory#root@main';
+export { WordchainStoryHandler };
+
+/**
+ * 데모/검증 편의 — 주어진 EstreUiCustomPageManager 에 페이지를 등록하고 바로 띄운다.
+ * 실제 앱에서는 호스트의 PagesProvider 에 별칭·핸들러를 합쳐 넣는 게 표준 방식.
+ */
+export function mountWordchainStory(mgr) {
+  const m = mgr || new EstreUiCustomPageManager();
+  // 핸들러는 클래스(생성자)로 등록 — EstreUI 가 페이지 생성 시 인스턴스화한다(인스턴스 X).
+  m.init({ [WORDCHAIN_STORY_ALIAS]: WORDCHAIN_STORY_PID }, { [WORDCHAIN_STORY_ALIAS]: WordchainStoryHandler });
+  return m.bringPage(WORDCHAIN_STORY_ALIAS);
 }

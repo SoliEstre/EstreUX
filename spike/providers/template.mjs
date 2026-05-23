@@ -50,13 +50,16 @@ customElements.define('${d.C}', ${d.Cls});
 
 function genEstreui(spec, d) {
   const stateInit = spec.state.map(s => `${s.name}: ${d.jsDefault(s)}`).join(', ');
-  return `import { EstreUI } from 'estreui';
+  const lower = d.Cls.charAt(0).toLowerCase() + d.Cls.slice(1);
+  return `// EstreUI 는 export 없는 classic-script 프레임워크 — v1.5.1+ 가 window 에 노출한 페이지
+// 표면을 module-realm 에서 가져온다. 페이지 내부 DOM 은 EstreUI 관례대로 jQuery(handle.$host)로 그린다.
+const { EstrePageHandler, EstreUiCustomPageManager } = window;
 
 /**
- * ${d.C} — EstreUI(macro-Rimwork, jQuery-class primitive) 단독 변종. (PoC 대표 패턴)
+ * ${d.C} — EstreUI(macro-Rimwork) 변종: estreUi 페이지 시스템에 article 로 마운트. (PoC 대표 패턴)
 ${d.renderComment}
  */
-export function ${d.Cls.charAt(0).toLowerCase() + d.Cls.slice(1)}(host) {
+function build${d.Cls}($host) {
   const state = { ${stateInit}, ...load() };
   function load() { try { return JSON.parse(localStorage.getItem('${d.pkey}') || '{}'); } catch { return {}; } }
   function save() { localStorage.setItem('${d.pkey}', JSON.stringify({ ${d.pfields.map(f => `${f}: state.${f}`).join(', ')} })); }
@@ -64,11 +67,27 @@ export function ${d.Cls.charAt(0).toLowerCase() + d.Cls.slice(1)}(host) {
   function bump(n) { state.count += n; paint(); }
   function clear() { state.count = 0; paint(); }
   function paint() {
-    EstreUI(host).html(\`<button class="nt-btn">\${state.enabled ? '🔔' : '🔕'}</button>\${state.count > 0 ? \`<span class="nt-badge">\${state.count}</span>\` : ''}\`);
-    EstreUI(host).find('.nt-btn').on('click', toggle);
+    $host.html(\`<button class="nt-btn">\${state.enabled ? '🔔' : '🔕'}</button>\${state.count > 0 ? \`<span class="nt-badge">\${state.count}</span>\` : ''}\`);
+    $host.find('.nt-btn').on('click', toggle);
   }
   paint();
   return { toggle, bump, clear, get state() { return state; } };
+}
+
+/** EstreUI 페이지 핸들러 — onBring 에서 article($host)에 UI 빌드. */
+class ${d.Cls}Handler extends EstrePageHandler {
+  onBring(handle) { this._w = build${d.Cls}(handle.$host); }
+}
+
+export const ${lower}Alias = '${lower}';
+export const ${lower}Pid = '$s&m=${lower}#root@main';
+export { ${d.Cls}Handler };
+
+/** 데모/검증 편의 — 매니저에 등록 후 바로 띄운다. 실제 앱은 PagesProvider 에 합쳐 넣는 게 표준. */
+export function mount${d.Cls}(mgr) {
+  const m = mgr || new EstreUiCustomPageManager();
+  m.init({ [${lower}Alias]: ${lower}Pid }, { [${lower}Alias]: ${d.Cls}Handler });
+  return m.bringPage(${lower}Alias);
 }
 `;
 }

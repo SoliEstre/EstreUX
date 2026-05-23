@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EstreUX estreui 변종 검증 — wordchain-story (EstreUI 페이지 마운트)</title>
+<!--
+  estreui (macro) 변종 검증 하네스. estreuv/pair 와 달리 estreui 변종은 EstreUI 페이지
+  시스템에 마운트되므로 EstreUI 전체 부팅이 필요하다(esm.sh 단일 import-map 불가). EstreUI
+  1.5.1+ 의 scripts/styles 를 unpkg 로 classic <script> 로드하면 window 에 estreUi /
+  pageManager / EstrePageHandler / EstreUiCustomPageManager 가 노출되고, 변종 module 이
+  그 표면을 사용한다. 정적 http 서버로 examples/ 를 서빙해서 열 것.
+
+  검증 절차: 부팅 후 wordchainStory 페이지가 staticDoc#wordchainStory@main 에 마운트되어
+  agent 폴백 끝말잇기 회전이 도는지 확인.
+-->
+<script src="https://unpkg.com/estreui@1.5.1/scripts/boot.js"></script>
+<link rel="stylesheet" type="text/css" href="https://unpkg.com/estreui@1.5.1/styles/estreUiInitialize.css" />
+<link rel="stylesheet" type="text/css" href="https://unpkg.com/estreui@1.5.1/styles/estreUiRoot.css" />
+<link rel="stylesheet" type="text/css" href="https://unpkg.com/estreui@1.5.1/styles/estreUiCore.css" />
+<link rel="stylesheet" type="text/css" href="https://unpkg.com/estreui@1.5.1/styles/estreUiCore2.css" />
+<link rel="stylesheet" type="text/css" href="https://unpkg.com/estreui@1.5.1/styles/estreUiAliases.css" />
+<link rel="stylesheet" type="text/css" href="https://unpkg.com/estreui@1.5.1/styles/estreUi.css" />
+<link rel="stylesheet" type="text/css" href="https://unpkg.com/estreui@1.5.1/styles/estreUiHandles.css" />
+<link rel="stylesheet" type="text/css" href="https://unpkg.com/estreui@1.5.1/styles/estreUiHandleUnical.css" />
+<script defer src="https://code.jquery.com/jquery-4.0.0.min.js"></script>
+<script defer type="text/javascript" src="https://unpkg.com/estreui@1.5.1/scripts/jcodd.js"></script>
+<script defer type="text/javascript" src="https://unpkg.com/estreui@1.5.1/scripts/doctre.js"></script>
+<script defer type="text/javascript" src="https://unpkg.com/estreui@1.5.1/scripts/modernism.js"></script>
+<script defer type="text/javascript" src="https://unpkg.com/estreui@1.5.1/scripts/alienese.js"></script>
+<script defer type="text/javascript" src="https://unpkg.com/estreui@1.5.1/scripts/estreU0EEOZ.js"></script>
+<script defer type="text/javascript" src="https://unpkg.com/estreui@1.5.1/scripts/estreUi-core.js"></script>
+<script defer type="text/javascript" src="https://unpkg.com/estreui@1.5.1/scripts/estreUi-dialog.js"></script>
+<script defer type="text/javascript" src="https://unpkg.com/estreui@1.5.1/scripts/estreUi-notation.js"></script>
+<script defer type="text/javascript" src="https://unpkg.com/estreui@1.5.1/scripts/estreUi-notification.js"></script>
+<script defer type="text/javascript" src="https://unpkg.com/estreui@1.5.1/scripts/estreUi-pageModel.js"></script>
+<script defer type="text/javascript" src="https://unpkg.com/estreui@1.5.1/scripts/estreUi-pageManager.js"></script>
+<script defer type="text/javascript" src="https://unpkg.com/estreui@1.5.1/scripts/estreUi-handles.js"></script>
+<script defer type="text/javascript" src="https://unpkg.com/estreui@1.5.1/scripts/estreUi-interaction.js"></script>
+<script defer type="text/javascript" src="https://unpkg.com/estreui@1.5.1/scripts/estreUi-main.js"></script>
+<script type="module">
+  // EstreUI classic 스크립트(defer)가 모두 실행된 뒤 module 이 평가된다. 변종은 window 표면 사용.
+  import * as WC from './dist/estreui/wordchain-story.js';
+  window._WC = WC;
+  function boot() {
+    try {
+      const mgr = new window.EstreUiCustomPageManager();
+      mgr.init({ [WC.WORDCHAIN_STORY_ALIAS]: WC.WORDCHAIN_STORY_PID }, { [WC.WORDCHAIN_STORY_ALIAS]: WC.WordchainStoryHandler });
+      window.estreUi.init(false);
+      mgr.bringPage(WC.WORDCHAIN_STORY_ALIAS);
+      try { window.estreUi.checkOnReady(); } catch (e) { console.warn('checkOnReady:', e); }
+      window._mgr = mgr; window._mounted = true;
+      console.log('[host] mounted wordchainStory');
+    } catch (e) { window._mountError = String(e && e.stack || e); console.error('[host] mount failed:', e); }
+  }
+  if (document.readyState === 'complete') setTimeout(boot, 80);
+  else window.addEventListener('load', () => setTimeout(boot, 80));
+</script>
+</head>
+<body class="vfv_scroll">
+  <main id="splashRoot" style="z-index: 500;">
+    <section id="splash" data-on-top="0">
+      <div class="container" data-container-id="root">
+        <article class="constraint" data-article-id="main"></article>
+      </div>
+    </section>
+  </main>
+  <header id="fixedTop" data-hide=""></header>
+  <nav id="mainMenu" class="right" data-opened=""></nav>
+  <nav id="overwatchPanel" data-opened=""></nav>
+  <section id="panelTrigger" data-static="1"></section>
+  <div id="ptr"><div></div></div>
+  <!-- staticDoc: estreui 변종 page 가 마운트될 영역. exported 하지 않고 inline 으로 둔다. -->
+  <main id="staticDoc">
+    <section id="wordchainStory" class="root_tab_content" data-static="1" data-on-top="1">
+      <div class="container vfv_scroll" data-container-id="root" data-static="1" data-title="끝말잇기 스토리">
+        <article class="constraint" data-article-id="main" data-static="1" data-title="끝말잇기 스토리"></article>
+      </div>
+    </section>
+  </main>
+  <footer id="fixedBottom"><nav id="instantSections"></nav></footer>
+  <main id="instantDoc"></main>
+  <nav id="managedOverlay"></nav>
+  <div id="topLayer"></div>
+  <section id="handlePrototypes" style="display: none;"></section>
+</body>
+<script>document.getElementById("splash").dataset.onTop = "1";</script>
+</html>
