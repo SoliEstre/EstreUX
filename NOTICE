@@ -1,0 +1,8 @@
+EstreUX.js
+Copyright 2026 SoliEstre (Estre Soliette)
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+EstreUX is the development-time meta-layer of the Estre ecosystem: a natural-language
+intermediate source (`.eux`) expanded into EstreUI / EstreUV code. The runtime
+libraries EstreUI and EstreUV are distributed separately under the MIT License.

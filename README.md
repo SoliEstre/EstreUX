@@ -30,6 +30,7 @@ BYOK(Claude·GPT 등)와 로컬 서버(Ollama·vLLM·LM Studio 등)를 수평 �
 
 ## 라이선스
 
-**공개(public) 소스 repo.** 사용(use) 라이선스는 **GA 시점 확정** (현재 미정 — EstreUI/EstreUV
-라이선스와 정합 예정). npm 발행은 Phase B (`package.json` `private:true` = npm 발행 가드, GitHub
-공개와 무관).
+**Apache License 2.0** (Copyright 2026 SoliEstre (Estre Soliette) — [LICENSE](LICENSE) · [NOTICE](NOTICE)).
+표준 지향 메타-레이어라 **특허 grant** 포함된 Apache 2.0 채택 (런타임 라이브러리 EstreUI/EstreUV 는
+MIT — 레이어별 라이선스, 상호 호환). npm 발행은 Phase B (`package.json` `private:true` = npm 발행 가드,
+GitHub 공개와 무관).

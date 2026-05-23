@@ -12,5 +12,6 @@
     "drift": "node spike/drift-check.mjs spike/notif-toggle.eux",
     "spike": "node spike/expand.mjs spike/notif-toggle.eux && node spike/drift-check.mjs spike/notif-toggle.eux"
   },
-  "license": "UNLICENSED"
+  "author": "SoliEstre",
+  "license": "Apache-2.0"
 }
