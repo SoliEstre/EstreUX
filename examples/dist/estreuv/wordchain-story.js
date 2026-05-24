@@ -21,7 +21,7 @@ const FALLBACK = [
 const POS = ['좌상', '우상', '좌하', '우하'];
 const ORDER = [0, 1, 3, 2];   // 시계방향 순환
 const BASE = { openai: 'https://api.openai.com/v1', google: 'https://generativelanguage.googleapis.com/v1beta/openai', ollama: 'http://localhost:11434/v1', vllm: 'http://localhost:8000/v1', lmstudio: 'http://localhost:1234/v1' };
-const MODEL = { openai: 'gpt-4o-mini', google: 'gemini-2.0-flash', ollama: 'llama3.2', vllm: '', lmstudio: 'local-model' };
+const MODEL = { openai: 'gpt-4o-mini', google: 'gemini-2.5-flash', ollama: 'llama3.2', vllm: '', lmstudio: 'local-model' };
 const KEYLESS = new Set(['ollama', 'vllm', 'lmstudio']);   // 키 불요 로컬 provider — 그 외(openai·google)는 키 필요
 const langName = l => l === 'en' ? '영어' : l === 'ja' ? '일본어' : '한국어';
 const lastChar = w => (w || '').trim().slice(-1);
@@ -105,7 +105,7 @@ export class WordchainStory extends EstreUVElement {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const d = await r.json(); const ids = (d.data || []).map(m => m.id).filter(Boolean).sort();
       if (!ids.length) throw new Error('모델 없음');
-      this.models = ids; this.model = ids.includes(MODEL[this.provider]) ? MODEL[this.provider] : ids[0];
+      this.models = ids; this.model = ids.find(id => id === MODEL[this.provider] || id.replace(/^models\//, '') === MODEL[this.provider]) || ids[0];
     } catch (e) {
       console.warn('모델 목록 실패 → 기본값:', e);
       const def = MODEL[this.provider] || ''; this.models = def ? [def] : []; this.model = def; this._modelHint = '목록 실패·기본값';
