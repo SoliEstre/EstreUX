@@ -1,4 +1,4 @@
-# EstreUX.js
+# EstreUX
 
 **EstreUX** (Unified eXperience) — Estre 생태계의 **개발 시점 메타-레이어**. 자연어 중간 소스
 `.eux` 를 **brew**(LLM 변환)로 EstreUI(macro-Rimwork) / EstreUV(micro-Rimwork) 코드로 펼친다.
