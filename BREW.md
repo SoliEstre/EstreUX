@@ -36,22 +36,21 @@
 
 | prefix | 의미 | 문법 |
 | --- | --- | --- |
-| `in` | **props-in** — 호스트가 `setData`/`opts` 로 주입하는 데이터 | `in <name> : <type>  # 설명` |
+| `in` | **props-in** — 호스트가 `opts`/초기값으로 주입하는 정적/반응형 데이터 | `in <name> : <type>  # 설명` |
+| `cmd` | **command-in** (v0.0.3) — 호스트가 호출하는 갱신 메서드(`setData`·`feed` 류, 컨트롤러에 노출) | `cmd <name>(<args>) : <설명>` |
 | `out` | **events-out** — 컴포넌트가 호스트로 올리는 콜백 | `out <name>(<args>) : <설명>` |
 | `deps` | **주입 의존** — 내부 생성 금지, `opts` 로 주입받음 | `deps <name> : <type>  # 설명` |
 
 예 (ws-tabs):
 ```
 @ports
-in   channels : list          # 호스트가 setData 로 주입하는 채널 스냅샷
-in   active : string           # 활성 키
-out  onSelect(key) : 탭/그룹 클릭 — 호스트에 활성 전환 요청
+cmd  setData(snap) : 호스트가 {channels, active} 스냅샷 주입(부분 병합 → 재렌더)
+out  onSelect(key) : 탭(id)/그룹("group:<key>") 클릭 — 호스트에 활성 전환 요청
 out  onClose(id) : ✕ 클릭 — 호스트에 채널 닫기 요청
-deps storage : KeyValueStore   # (옵션) 영속 의존 주입
 ```
 
-- **`@state` 와 구분**: `@ports.in` 은 *주입 인터페이스*(계약), `@state` 는 *컴포넌트가 보관하는 내부 뷰 상태*. 격리 컴포넌트는 `in` 으로 받아 `state` 에 보관하고 `out` 으로 통지한다.
-- 모든 provider 가 포트 계약을 honor: `agent` 는 `@agent-brew` 스텁에 in/out/deps 를 "정확한 키·시그니처 준수" 지시로 렌더, `openai-compatible` 은 system 프롬프트로 전달.
+- **`@state` 와 구분**: `@ports.in` 은 *초기 props*, `@ports.cmd` 는 *런타임 갱신 메서드*(계약), `@state` 는 *컴포넌트가 보관하는 내부 뷰 상태*. 격리 컴포넌트는 `in`/`cmd` 로 받아 `state` 에 보관하고 `out` 으로 통지한다.
+- 모든 provider 가 포트 계약을 honor: `agent` 는 `@agent-brew` 스텁에 in/cmd/out/deps 를 "정확한 키·시그니처 준수" 지시로 렌더, `openai-compatible` 은 system 프롬프트로 전달.
 - **하위호환**: `@ports` 없는 `.eux` 는 빈 계약으로 파싱(기존 산출물 drift 불변, 검증됨).
 - **코드 무영향 메타 추가 라운드트립**: `@ports` 처럼 *기존 동작을 바꾸지 않는* 메타를 **증류된(검증 코드 보유) 컴포넌트**에 추가할 때는, agent re-brew(스텁 재생성 → 검증 본문 소실) 대신 **dist provenance 헤더의 `source` sha 만 새 `.eux` sha 로 갱신**(본문 유지)한다. drift-check 는 헤더 sha ↔ `.eux` sha 만 비교하므로 PASS 되고 검증 본문은 보존된다. (동작이 바뀌는 수정은 정식 re-brew → 본문 재구현.)
 
@@ -60,7 +59,7 @@ deps storage : KeyValueStore   # (옵션) 영속 의존 주입
 - ~~**`@deps`/`@ports` 섹션 부재** (ws-fab-badge, claude-session-2)~~ → **해소 (v0.0.2, 2026-05-27)**: `@ports`(in/out/deps) 섹션 도입 — 위 "`@ports` 호스트 계약" 절 참조. parseEux 파서·spec 구조·agent 스텁·openai 프롬프트 전 경로 반영, 스모크(in 2·out 2·deps 1 렌더)·하위호환 drift PASS 검증. claude-session-2 가 증류 4종(ws-channel-input·ws-fab-badge·ws-conn-bar·ws-tabs)에 적용+re-brew 예정.
 - **디자인/스타일 토큰 표현 약함** (ws-fab-badge, claude-session-2): 구체 스타일(px·색)이 `@render` 자연어에만. vanilla 는 CSS 주입이 필요한데 디자인 토큰/스타일 슬롯 표현이 없어 하드코딩·`var(--accent)` 폴백으로 처리. 스타일 토큰 참조 표현 검토.
 - **`@state` 외부 결합 자연어 의존** (ws-fab-badge, claude-session-2): "호스트와 동기" 류 결합이 자연어. props-in/events-out 구조화로 brew 재현성↑.
-- **⭐ `@ports in` 의 command-in 미표현** (ws-tool-card, claude-session-2): `@ports in` 은 정적 데이터 props(`name:type`) 문법이라 *호스트가 호출하는 명령 메서드*(`setData(snap)`·`setStatus(snap)`·`feed(evt)` — args 시그니처 有)를 담지 못함. 증류 **4종 전부 setX/feed 로 주입받는 보편 패턴**인데 tool-card 의 `feed(evt)` 에서 드러남(`in feed:object` 로 우회, 시그니처는 주석). **props-in(정적/반응형 데이터) ↔ command-in(호스트 호출 메서드)** 구분 표현 필요 — 예: `cmd <name>(<args>) : <설명>` prefix 추가 또는 `in` 에 메서드 시그니처 허용. @ports v0.0.3 보강 후보(codex 교차검증 + 일괄).
+- ~~**⭐ `@ports in` 의 command-in 미표현** (ws-tool-card)~~ → **해소 (v0.0.3, 2026-05-27)**: `@ports` 에 `cmd` prefix 추가 — command-in(`setData`·`feed` 등 호스트 호출 갱신 메서드, args 시그니처)을 props-in 과 분리. 파서(`in|cmd|out|deps`)·`spec.ports.cmd`·agent 스텁·openai 프롬프트 반영, 스모크 검증. 증류 5종 .eux 재적용 예정(claude 분담, 메타-only).
 - **파생데이터 / 상태머신 표현 부재** (ws-tool-card, claude-session-2): feed aggregate(4 phase start→args→end→result → 단일 tool)·running→done 전이·display merge 가 `@behavior` 자연어. derived/reducer/상태전이 표현 검토.
 - **target 모듈 형식·DOM 클래스·스타일 명세 부재 → 모델 brew 편차** (google/gemini-2.5-flash 벤치마크, ws-conn-bar): 같은 `.eux` 를 `agent` vs `google` brew 비교 — `@ports`/`@state`/`@behavior` 는 **양쪽 충실 honor**(특히 @ports command-in `setStatus`·표시전용 out 없음 모델 무관 정확 = 계약 명시가 모델 재현성에 기여 ✓), 그러나 ① 모듈 형식(agent=ESM `export` / google=factory `return`) ② DOM 클래스(agent=`.ws-conn` 실제 일치 / google=`.ws-conn-bar` 임의) ③ 스타일(agent=CSS `var(--accent)` 주입 / google=주입 생략·호스트 의존) 편차. `@render`/`@targets` 의 모듈 형식·클래스·스타일 토큰 명세 강화 필요(위 스타일토큰 갭과 연결).
 <!-- codex 교차 검증·후속 증류 부족분은 보고 시 여기 누적 -->
