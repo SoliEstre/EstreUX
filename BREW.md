@@ -72,15 +72,38 @@ accent = var(--accent, #7a4dff)   # 연결/활성 강조색
 - 토큰(`var(--x, fallback)`)은 호스트 테마와 결합, 셀렉터 힌트는 컴포넌트 자체 스타일.
 - 하위호환: `@styles` 없으면 brew 가 `@render` 자연어로 스타일 추정(기존 동작).
 
+## `@machine` — 파생데이터·상태머신 (reducer, v0.0.5+)
+
+`cmd` 가 *reducer*(현 상태 × 이벤트 → 새 상태)일 때 — 예: tool-card 의 `feed(evt)` 가 phase 별로 단일 tool 상태를 누적 — 그 로직을 `@behavior` 자연어에 묻지 않고 **`@machine` 섹션**에 구조화 자연어로 명세한다: ① reducer dispatch(이벤트 키별 전이) ② 상태전이(from→to, 트리거·가드) ③ 파생필드 매핑(source→field).
+
+예 (ws-tool-card):
+```
+@machine tool   # cmd feed(evt) 가 dispatch — (tool 상태, evt) → 새 tool 상태
+states: running(초기) · done · error
+dispatch feed(evt) by evt.phase:
+  start  → init: title=toolCallName, status=running
+  args   → accumulate: args = delta 누적(argsPreview 우선)
+  end    → running→done
+  result → set result, running→done
+guard: evt.display.status="error" → →error (명시 우선)
+derive:
+  title  ← display.title || toolCallName || toolCallId
+  result ← content || delta || resultPreview
+  dkind/subtitle/summary/compact ← display 부분 병합(mergeDisplay)
+```
+
+- 보통 `cmd`(dispatch 진입점)와 짝 — `@ports cmd feed(evt)` + `@machine` reducer 명세.
+- 단일 상태 단위(컴포넌트당 0~1 머신). 단순 props/setX 갱신 컴포넌트는 `@machine` 불요.
+- 하위호환: 없으면 brew 가 `@behavior` 자연어로 추정(기존 동작).
+
 ## 발견된 표현력 갭 (dogfooding 누적 — EstreGenesis 시드 2.0 입력)
 라이브보드 증류 dogfooding 중 발견된 `.eux` 표현력 한계 — 보강 후보:
 - ~~**`@deps`/`@ports` 섹션 부재** (ws-fab-badge, claude-session-2)~~ → **해소 (v0.0.2, 2026-05-27)**: `@ports`(in/out/deps) 섹션 도입 — 위 "`@ports` 호스트 계약" 절 참조. parseEux 파서·spec 구조·agent 스텁·openai 프롬프트 전 경로 반영, 스모크(in 2·out 2·deps 1 렌더)·하위호환 drift PASS 검증. claude-session-2 가 증류 4종(ws-channel-input·ws-fab-badge·ws-conn-bar·ws-tabs)에 적용+re-brew 예정.
 - ~~**디자인/스타일 토큰 표현 약함** (ws-fab-badge, claude-session-2; google 벤치마크 실증)~~ → **해소 (v0.0.4, 2026-05-27)**: `@styles` 섹션 도입(위 절) — 디자인 토큰 + 셀렉터 스타일 힌트로 brew 가 결정적 CSS emit. 파서·spec.styles·agent 스텁·openai 프롬프트 반영. 증류 5종 .eux 적용 예정(claude 분담).
 - **`@state` 외부 결합 자연어 의존** (ws-fab-badge, claude-session-2): "호스트와 동기" 류 결합이 자연어. props-in/events-out 구조화로 brew 재현성↑.
 - ~~**⭐ `@ports in` 의 command-in 미표현** (ws-tool-card)~~ → **해소 (v0.0.3, 2026-05-27)**: `@ports` 에 `cmd` prefix 추가 — command-in(`setData`·`feed` 등 호스트 호출 갱신 메서드, args 시그니처)을 props-in 과 분리. 파서(`in|cmd|out|deps`)·`spec.ports.cmd`·agent 스텁·openai 프롬프트 반영, 스모크 검증. 증류 5종 .eux 재적용 예정(claude 분담, 메타-only).
-- **파생데이터 / 상태머신 표현 부재** (ws-tool-card, claude-session-2): feed aggregate(4 phase start→args→end→result → 단일 tool)·running→done 전이·display merge 가 `@behavior` 자연어. derived/reducer/상태전이 표현 검토.
+- ~~**파생데이터 / 상태머신 표현 부재** (ws-tool-card, claude-session-2)~~ → **해소 (v0.0.5, 2026-05-27)**: `@machine` 섹션 도입(위 절) — reducer dispatch·상태전이·파생필드를 구조화 자연어로. claude 의 tool-card reducer 분석(phase 전이·running→done/error 가드·파생필드 매핑) 입력. 파서·spec.machine·agent 스텁·openai 프롬프트 반영, 스모크 검증. tool-card 시범 적용(메타-only).
 - **target 모듈 형식·DOM 클래스·스타일 명세 부재 → 모델 brew 편차** (google/gemini-2.5-flash 벤치마크, ws-conn-bar): 같은 `.eux` 를 `agent` vs `google` brew 비교 — `@ports`/`@state`/`@behavior` 는 **양쪽 충실 honor**(특히 @ports command-in `setStatus`·표시전용 out 없음 모델 무관 정확 = 계약 명시가 모델 재현성에 기여 ✓), 그러나 ① 모듈 형식(agent=ESM `export` / google=factory `return`) ② DOM 클래스(agent=`.ws-conn` 실제 일치 / google=`.ws-conn-bar` 임의) ③ 스타일(agent=CSS `var(--accent)` 주입 / google=주입 생략·호스트 의존) 편차. `@render`/`@targets` 의 모듈 형식·클래스·스타일 토큰 명세 강화 필요(위 스타일토큰 갭과 연결).
 - **@styles 토큰 공유/import 부재** (claude-session-2, @styles 적용 관찰): `@styles` 로 토큰을 명시하니 *컴포넌트 간 공유 토큰*이 드러남 — danger(`#e0455e`)=fab-badge·tabs 공통, role 색(up `#e0913a`·main `#7a4dff`·local `#34b39e`)=tabs·conn-bar 공통, status 색=tool-card. 각 `.eux` 가 토큰을 중복 정의. 디자인 시스템 공통 토큰 팔레트(별도 `.eux` 또는 `@styles import`)로 승격 검토. v0.0.5 후보.
-- **파생데이터 / 상태머신 표현 부재** (ws-tool-card — 재게시, 다음 보강 대상): feed aggregate(4 phase → 단일 tool)·running→done 전이·display merge 가 `@behavior` 자연어. derived/reducer/상태전이 표현이 마지막 핵심 갭.
 <!-- codex 교차 검증·후속 증류 부족분은 보고 시 여기 누적 -->
 

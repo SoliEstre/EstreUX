@@ -21,6 +21,7 @@ export async function expand(spec, target, ctx) {
   const bh = spec.behavior.map(b => `//     ${b.name}(${b.args}): ${b.desc}`).join('\n');
   const rd = spec.render.split('\n').map(l => '//     ' + l).join('\n');
   const sd = (spec.styles || '').split('\n').filter(Boolean).map(l => '//     ' + l).join('\n');
+  const md = (spec.machine || '').split('\n').filter(Boolean).map(l => '//     ' + l).join('\n');
   const p = spec.ports || { in: [], cmd: [], out: [], deps: [] };
   const pin = p.in.map(x => `//     ${x.name}: ${x.type}${x.comment ? '   — ' + x.comment : ''}`).join('\n');
   const pcmd = (p.cmd || []).map(x => `//     ${x.name}(${x.args}): ${x.desc}`).join('\n');
@@ -52,6 +53,8 @@ export async function expand(spec, target, ctx) {
     rd || '//     (none)',
     ' * │ styles    (디자인 토큰·셀렉터 스타일 — 결정적 CSS 로 emit, 1회 주입):',
     sd || '//     (none)',
+    ' * │ machine   (파생데이터/상태머신 — reducer dispatch·상태전이·파생필드, 명세대로 구현):',
+    md || '//     (none)',
     ` * │ persist   : ${JSON.stringify(spec.persist)}`,
     ` * │ targets   : ${spec.targets.join(', ')}`,
     ' * └──────────────────────────────────────────────────────────────────',

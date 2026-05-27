@@ -27,7 +27,7 @@ const baseDir = dirname(resolve(euxPath));
 
 // ---- .eux 파서 (약한 구조 — @directive 섹션) ----
 function parseEux(text) {
-  const spec = { component: '', intent: '', expansion: {}, targets: [], state: [], behavior: [], render: '', styles: '', persist: {}, ports: { in: [], cmd: [], out: [], deps: [] } };
+  const spec = { component: '', intent: '', expansion: {}, targets: [], state: [], behavior: [], render: '', styles: '', machine: '', persist: {}, ports: { in: [], cmd: [], out: [], deps: [] } };
   let section = null;
   for (const line of text.split(/\r?\n/)) {
     const m = line.match(/^@(\w+)\s*(.*)$/);
@@ -52,6 +52,10 @@ function parseEux(text) {
     } else if (section === 'styles') {
       // @styles — 디자인 토큰 + 셀렉터별 스타일 힌트(자유 텍스트). brew 가 결정적 CSS 로 emit.
       if (line.trim()) spec.styles += (spec.styles ? '\n' : '') + line.trim();
+    } else if (section === 'machine') {
+      // @machine — 파생데이터/상태머신(reducer dispatch·상태전이·파생필드 매핑, 구조화 자연어).
+      // cmd 류 dispatch 진입점이 (현 상태, event) → 새 상태 reducer 일 때 그 명세를 담는다.
+      if (line.trim()) spec.machine += (spec.machine ? '\n' : '') + line.trim();
     } else if (section === 'ports') {
       // @ports — 격리 컴포넌트의 호스트 계약. 줄 prefix 로 방향 구분:
       //   in   <name> : <type>  # comment        (props-in, 호스트→컴포넌트 정적/반응형 데이터 주입)
