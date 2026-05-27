@@ -11,7 +11,7 @@ import * as template from './template.mjs';
 import * as openaiCompatible from './openai-compatible.mjs';
 import * as agent from './agent.mjs';
 
-const OPENAI_COMPAT = new Set(['ollama', 'vllm', 'lmstudio', 'openai', 'azure']);
+const OPENAI_COMPAT = new Set(['ollama', 'vllm', 'lmstudio', 'openai', 'azure', 'google']);
 
 export function parseModel(model) {
   const lhs = String(model || '').split('@')[0];

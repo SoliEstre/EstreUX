@@ -18,6 +18,7 @@ const DEFAULT_BASE = {
   lmstudio: 'http://localhost:1234/v1',
   openai: 'https://api.openai.com/v1',
   azure: '',
+  google: 'https://generativelanguage.googleapis.com/v1beta/openai',   // Gemini OpenAI-호환 레이어
 };
 
 function buildMessages(spec, target) {
