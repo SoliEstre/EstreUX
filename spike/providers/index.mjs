@@ -9,6 +9,7 @@
  */
 import * as template from './template.mjs';
 import * as openaiCompatible from './openai-compatible.mjs';
+import * as agent from './agent.mjs';
 
 const OPENAI_COMPAT = new Set(['ollama', 'vllm', 'lmstudio', 'openai', 'azure']);
 
@@ -23,7 +24,8 @@ export function parseModel(model) {
 
 export function resolveProvider(model) {
   const { provider } = parseModel(model);
+  if (provider === 'agent') return agent;                       // 기본 — 에이전트(IDE/서브에이전트)가 직접 brew
   if (provider === 'template' || provider === 'poc') return template;
   if (OPENAI_COMPAT.has(provider)) return openaiCompatible;
-  throw new Error(`알 수 없는 LLM provider: '${provider}' (지원: template, ${[...OPENAI_COMPAT].join(', ')})`);
+  throw new Error(`알 수 없는 LLM provider: '${provider}' (지원: agent, template, ${[...OPENAI_COMPAT].join(', ')})`);
 }
