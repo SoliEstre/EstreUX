@@ -53,6 +53,7 @@ deps storage : KeyValueStore   # (옵션) 영속 의존 주입
 - **`@state` 와 구분**: `@ports.in` 은 *주입 인터페이스*(계약), `@state` 는 *컴포넌트가 보관하는 내부 뷰 상태*. 격리 컴포넌트는 `in` 으로 받아 `state` 에 보관하고 `out` 으로 통지한다.
 - 모든 provider 가 포트 계약을 honor: `agent` 는 `@agent-brew` 스텁에 in/out/deps 를 "정확한 키·시그니처 준수" 지시로 렌더, `openai-compatible` 은 system 프롬프트로 전달.
 - **하위호환**: `@ports` 없는 `.eux` 는 빈 계약으로 파싱(기존 산출물 drift 불변, 검증됨).
+- **코드 무영향 메타 추가 라운드트립**: `@ports` 처럼 *기존 동작을 바꾸지 않는* 메타를 **증류된(검증 코드 보유) 컴포넌트**에 추가할 때는, agent re-brew(스텁 재생성 → 검증 본문 소실) 대신 **dist provenance 헤더의 `source` sha 만 새 `.eux` sha 로 갱신**(본문 유지)한다. drift-check 는 헤더 sha ↔ `.eux` sha 만 비교하므로 PASS 되고 검증 본문은 보존된다. (동작이 바뀌는 수정은 정식 re-brew → 본문 재구현.)
 
 ## 발견된 표현력 갭 (dogfooding 누적 — EstreGenesis 시드 2.0 입력)
 라이브보드 증류 dogfooding 중 발견된 `.eux` 표현력 한계 — 보강 후보:
