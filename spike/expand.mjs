@@ -27,7 +27,7 @@ const baseDir = dirname(resolve(euxPath));
 
 // ---- .eux 파서 (약한 구조 — @directive 섹션) ----
 function parseEux(text) {
-  const spec = { component: '', intent: '', expansion: {}, targets: [], state: [], behavior: [], render: '', persist: {} };
+  const spec = { component: '', intent: '', expansion: {}, targets: [], state: [], behavior: [], render: '', persist: {}, ports: { in: [], out: [], deps: [] } };
   let section = null;
   for (const line of text.split(/\r?\n/)) {
     const m = line.match(/^@(\w+)\s*(.*)$/);
@@ -49,6 +49,22 @@ function parseEux(text) {
       if (bm) spec.behavior.push({ name: bm[1], args: (bm[2] || '()').replace(/[()]/g, ''), desc: bm[3].trim() });
     } else if (section === 'render') {
       if (line.trim()) spec.render += (spec.render ? '\n' : '') + line.trim();
+    } else if (section === 'ports') {
+      // @ports — 격리 컴포넌트의 호스트 계약. 줄 prefix 로 방향 구분:
+      //   in   <name> : <type>  # comment        (props-in, 호스트→컴포넌트 주입)
+      //   out  <name>(<args>) : <desc>            (events-out, 컴포넌트→호스트 콜백)
+      //   deps <name> : <type>  # comment        (주입 의존)
+      const dm = line.match(/^\s*(in|out|deps)\s+(.+)$/);
+      if (dm) {
+        const dir = dm[1], body = dm[2];
+        if (dir === 'out') {
+          const om = body.match(/^(\w+)(\([^)]*\))?\s*:\s*(.+)$/);
+          if (om) spec.ports.out.push({ name: om[1], args: (om[2] || '()').replace(/[()]/g, ''), desc: om[3].trim() });
+        } else {
+          const im = body.match(/^(\w+)\s*:\s*([^#]+?)\s*(?:#\s*(.*))?$/);
+          if (im) spec.ports[dir].push({ name: im[1], type: im[2].trim(), comment: (im[3] || '').trim() });
+        }
+      }
     }
   }
   return spec;

@@ -20,6 +20,10 @@ export async function expand(spec, target, ctx) {
   const st = spec.state.map(s => `//     ${s.name}: ${s.type} = ${s.default}${s.comment ? '   — ' + s.comment : ''}`).join('\n');
   const bh = spec.behavior.map(b => `//     ${b.name}(${b.args}): ${b.desc}`).join('\n');
   const rd = spec.render.split('\n').map(l => '//     ' + l).join('\n');
+  const p = spec.ports || { in: [], out: [], deps: [] };
+  const pin = p.in.map(x => `//     ${x.name}: ${x.type}${x.comment ? '   — ' + x.comment : ''}`).join('\n');
+  const pout = p.out.map(x => `//     ${x.name}(${x.args}): ${x.desc}`).join('\n');
+  const pdeps = p.deps.map(x => `//     ${x.name}: ${x.type}${x.comment ? '   — ' + x.comment : ''}`).join('\n');
   const model = (ctx && ctx.modelName) || 'agent';
   return [
     '/* ┌─ @agent-brew ───────────────────────────────────────────────────',
@@ -30,6 +34,12 @@ export async function expand(spec, target, ctx) {
     ' * │',
     ` * │ component : ${spec.component}`,
     ` * │ intent    : ${spec.intent}`,
+    ' * │ ports.in  (props 주입 — 호스트가 setData/opts 로 전달, 정확한 키·타입 준수):',
+    pin || '//     (none)',
+    ' * │ ports.out (events-out 콜백 — 호스트로 통지, 정확한 시그니처 준수):',
+    pout || '//     (none)',
+    ' * │ ports.deps(주입 의존 — 내부 생성 금지, opts 로 주입받아 사용):',
+    pdeps || '//     (none)',
     ' * │ state     :',
     st || '//     (none)',
     ' * │ behavior  :',

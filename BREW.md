@@ -30,9 +30,33 @@
 - **디테일(detail)**: 현행 `.eux` 수준(state 타입·default, behavior 설명, render, persist).
 - **하이퍼디테일(hyper)**: 엣지케이스·접근성·성능·의존 주입·라운드트립 기준까지 — 결정적 brew 가능 수준.
 
+## `@ports` — 호스트 계약 (격리 컴포넌트, v0.0.2+)
+
+격리 컴포넌트(자체 전역 상태 접근 없이 호스트가 주입/통지로만 결합)는 호스트와의 계약을 `@behavior` 자연어에 녹이지 않고 **`@ports` 섹션**으로 구조화한다. 줄 prefix 로 방향을 구분:
+
+| prefix | 의미 | 문법 |
+| --- | --- | --- |
+| `in` | **props-in** — 호스트가 `setData`/`opts` 로 주입하는 데이터 | `in <name> : <type>  # 설명` |
+| `out` | **events-out** — 컴포넌트가 호스트로 올리는 콜백 | `out <name>(<args>) : <설명>` |
+| `deps` | **주입 의존** — 내부 생성 금지, `opts` 로 주입받음 | `deps <name> : <type>  # 설명` |
+
+예 (ws-tabs):
+```
+@ports
+in   channels : list          # 호스트가 setData 로 주입하는 채널 스냅샷
+in   active : string           # 활성 키
+out  onSelect(key) : 탭/그룹 클릭 — 호스트에 활성 전환 요청
+out  onClose(id) : ✕ 클릭 — 호스트에 채널 닫기 요청
+deps storage : KeyValueStore   # (옵션) 영속 의존 주입
+```
+
+- **`@state` 와 구분**: `@ports.in` 은 *주입 인터페이스*(계약), `@state` 는 *컴포넌트가 보관하는 내부 뷰 상태*. 격리 컴포넌트는 `in` 으로 받아 `state` 에 보관하고 `out` 으로 통지한다.
+- 모든 provider 가 포트 계약을 honor: `agent` 는 `@agent-brew` 스텁에 in/out/deps 를 "정확한 키·시그니처 준수" 지시로 렌더, `openai-compatible` 은 system 프롬프트로 전달.
+- **하위호환**: `@ports` 없는 `.eux` 는 빈 계약으로 파싱(기존 산출물 drift 불변, 검증됨).
+
 ## 발견된 표현력 갭 (dogfooding 누적 — EstreGenesis 시드 2.0 입력)
 라이브보드 증류 dogfooding 중 발견된 `.eux` 표현력 한계 — 보강 후보:
-- **`@deps`/`@ports` 섹션 부재** (ws-fab-badge, claude-session-2): 격리 컴포넌트의 호스트 계약(콜백·포트)을 `@behavior` 자연어에 녹여야 함. `@ports`(in: props / out: events) 또는 `@deps` 섹션으로 구조화하면 의존 주입 계약이 명확해지고 brew 일관성↑.
+- ~~**`@deps`/`@ports` 섹션 부재** (ws-fab-badge, claude-session-2)~~ → **해소 (v0.0.2, 2026-05-27)**: `@ports`(in/out/deps) 섹션 도입 — 위 "`@ports` 호스트 계약" 절 참조. parseEux 파서·spec 구조·agent 스텁·openai 프롬프트 전 경로 반영, 스모크(in 2·out 2·deps 1 렌더)·하위호환 drift PASS 검증. claude-session-2 가 증류 4종(ws-channel-input·ws-fab-badge·ws-conn-bar·ws-tabs)에 적용+re-brew 예정.
 - **디자인/스타일 토큰 표현 약함** (ws-fab-badge, claude-session-2): 구체 스타일(px·색)이 `@render` 자연어에만. vanilla 는 CSS 주입이 필요한데 디자인 토큰/스타일 슬롯 표현이 없어 하드코딩·`var(--accent)` 폴백으로 처리. 스타일 토큰 참조 표현 검토.
 - **`@state` 외부 결합 자연어 의존** (ws-fab-badge, claude-session-2): "호스트와 동기" 류 결합이 자연어. props-in/events-out 구조화로 brew 재현성↑.
 <!-- codex 교차 검증·후속 증류 부족분은 보고 시 여기 누적 -->
