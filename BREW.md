@@ -71,6 +71,7 @@ accent = var(--accent, #7a4dff)   # 연결/활성 강조색
 - vanilla 타깃은 이 명세로 CSS 를 1회 주입(injectStyle). estreuv/estreui 는 각 타깃 스타일 관례로 매핑.
 - 토큰(`var(--x, fallback)`)은 호스트 테마와 결합, 셀렉터 힌트는 컴포넌트 자체 스타일.
 - 하위호환: `@styles` 없으면 brew 가 `@render` 자연어로 스타일 추정(기존 동작).
+- **공통 토큰 팔레트 (v0.0.5)**: 여러 컴포넌트가 공유하는 토큰(role 색·danger·status)은 각 `.eux` 가 중복 정의하지 않고 호스트 `:root` 의 디자인 시스템 변수를 `var(--ws-danger, #e0455e)` 형태로 참조한다 — SSoT=호스트 팔레트, fallback 으로 격리성 유지. 디자인 일관·테마 오버라이드 가능. (라이브보드 = `public/style.css :root --ws-*`)
 
 ## `@machine` — 파생데이터·상태머신 (reducer, v0.0.5+)
 
@@ -104,6 +105,6 @@ derive:
 - ~~**⭐ `@ports in` 의 command-in 미표현** (ws-tool-card)~~ → **해소 (v0.0.3, 2026-05-27)**: `@ports` 에 `cmd` prefix 추가 — command-in(`setData`·`feed` 등 호스트 호출 갱신 메서드, args 시그니처)을 props-in 과 분리. 파서(`in|cmd|out|deps`)·`spec.ports.cmd`·agent 스텁·openai 프롬프트 반영, 스모크 검증. 증류 5종 .eux 재적용 예정(claude 분담, 메타-only).
 - ~~**파생데이터 / 상태머신 표현 부재** (ws-tool-card, claude-session-2)~~ → **해소 (v0.0.5, 2026-05-27)**: `@machine` 섹션 도입(위 절) — reducer dispatch·상태전이·파생필드를 구조화 자연어로. claude 의 tool-card reducer 분석(phase 전이·running→done/error 가드·파생필드 매핑) 입력. 파서·spec.machine·agent 스텁·openai 프롬프트 반영, 스모크 검증. tool-card 시범 적용(메타-only).
 - **target 모듈 형식·DOM 클래스·스타일 명세 부재 → 모델 brew 편차** (google/gemini-2.5-flash 벤치마크, ws-conn-bar): 같은 `.eux` 를 `agent` vs `google` brew 비교 — `@ports`/`@state`/`@behavior` 는 **양쪽 충실 honor**(특히 @ports command-in `setStatus`·표시전용 out 없음 모델 무관 정확 = 계약 명시가 모델 재현성에 기여 ✓), 그러나 ① 모듈 형식(agent=ESM `export` / google=factory `return`) ② DOM 클래스(agent=`.ws-conn` 실제 일치 / google=`.ws-conn-bar` 임의) ③ 스타일(agent=CSS `var(--accent)` 주입 / google=주입 생략·호스트 의존) 편차. `@render`/`@targets` 의 모듈 형식·클래스·스타일 토큰 명세 강화 필요(위 스타일토큰 갭과 연결).
-- **@styles 토큰 공유/import 부재** (claude-session-2, @styles 적용 관찰): `@styles` 로 토큰을 명시하니 *컴포넌트 간 공유 토큰*이 드러남 — danger(`#e0455e`)=fab-badge·tabs 공통, role 색(up `#e0913a`·main `#7a4dff`·local `#34b39e`)=tabs·conn-bar 공통, status 색=tool-card. 각 `.eux` 가 토큰을 중복 정의. 디자인 시스템 공통 토큰 팔레트(별도 `.eux` 또는 `@styles import`)로 승격 검토. v0.0.5 후보.
+- ~~**@styles 토큰 공유/import 부재** (claude-session-2, @styles 적용 관찰)~~ → **해소 (v0.0.5, 2026-05-27)**: 공통 토큰(role 색·danger·status)을 호스트 `:root --ws-*` 디자인 시스템 변수로 승격하고 각 `.eux @styles` 가 `var(--ws-*, fallback)` 참조 — 위 "공통 토큰 팔레트" 항목. 중복 정의 제거·테마 일관. 5종 .eux/dist var 참조 적용(claude 분담).
 <!-- codex 교차 검증·후속 증류 부족분은 보고 시 여기 누적 -->
 
