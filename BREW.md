@@ -54,10 +54,28 @@ out  onClose(id) : ✕ 클릭 — 호스트에 채널 닫기 요청
 - **하위호환**: `@ports` 없는 `.eux` 는 빈 계약으로 파싱(기존 산출물 drift 불변, 검증됨).
 - **코드 무영향 메타 추가 라운드트립**: `@ports` 처럼 *기존 동작을 바꾸지 않는* 메타를 **증류된(검증 코드 보유) 컴포넌트**에 추가할 때는, agent re-brew(스텁 재생성 → 검증 본문 소실) 대신 **dist provenance 헤더의 `source` sha 만 새 `.eux` sha 로 갱신**(본문 유지)한다. drift-check 는 헤더 sha ↔ `.eux` sha 만 비교하므로 PASS 되고 검증 본문은 보존된다. (동작이 바뀌는 수정은 정식 re-brew → 본문 재구현.)
 
+## `@styles` — 디자인 토큰·스타일 힌트 (vanilla, v0.0.4+)
+
+`@render` 가 *구조·레이아웃*을 자연어로 담는다면, `@styles` 는 *디자인 토큰(색·크기 상수) + 셀렉터별 스타일 힌트*를 담아 brew 가 **결정적 CSS** 를 emit 하게 한다 — google 벤치마크에서 같은 `.eux` 가 모델마다 색·클래스를 임의 생성한 편차를 제거. `@render` 형제로 자유 텍스트(토큰 라인 + 셀렉터 압축 스타일).
+
+예 (ws-conn-bar):
+```
+@styles
+accent = var(--accent, #7a4dff)   # 연결/활성 강조색
+.ws-conn    : flex·align center·gap 7px·12px·#cfcfe0·flex-wrap
+.ws-dot2    : 8px 원·#888·전이; .on → accent
+.ws-meta    : #999
+.ws-repo    : accent·hover 밑줄
+```
+
+- vanilla 타깃은 이 명세로 CSS 를 1회 주입(injectStyle). estreuv/estreui 는 각 타깃 스타일 관례로 매핑.
+- 토큰(`var(--x, fallback)`)은 호스트 테마와 결합, 셀렉터 힌트는 컴포넌트 자체 스타일.
+- 하위호환: `@styles` 없으면 brew 가 `@render` 자연어로 스타일 추정(기존 동작).
+
 ## 발견된 표현력 갭 (dogfooding 누적 — EstreGenesis 시드 2.0 입력)
 라이브보드 증류 dogfooding 중 발견된 `.eux` 표현력 한계 — 보강 후보:
 - ~~**`@deps`/`@ports` 섹션 부재** (ws-fab-badge, claude-session-2)~~ → **해소 (v0.0.2, 2026-05-27)**: `@ports`(in/out/deps) 섹션 도입 — 위 "`@ports` 호스트 계약" 절 참조. parseEux 파서·spec 구조·agent 스텁·openai 프롬프트 전 경로 반영, 스모크(in 2·out 2·deps 1 렌더)·하위호환 drift PASS 검증. claude-session-2 가 증류 4종(ws-channel-input·ws-fab-badge·ws-conn-bar·ws-tabs)에 적용+re-brew 예정.
-- **디자인/스타일 토큰 표현 약함** (ws-fab-badge, claude-session-2): 구체 스타일(px·색)이 `@render` 자연어에만. vanilla 는 CSS 주입이 필요한데 디자인 토큰/스타일 슬롯 표현이 없어 하드코딩·`var(--accent)` 폴백으로 처리. 스타일 토큰 참조 표현 검토.
+- ~~**디자인/스타일 토큰 표현 약함** (ws-fab-badge, claude-session-2; google 벤치마크 실증)~~ → **해소 (v0.0.4, 2026-05-27)**: `@styles` 섹션 도입(위 절) — 디자인 토큰 + 셀렉터 스타일 힌트로 brew 가 결정적 CSS emit. 파서·spec.styles·agent 스텁·openai 프롬프트 반영. 증류 5종 .eux 적용 예정(claude 분담).
 - **`@state` 외부 결합 자연어 의존** (ws-fab-badge, claude-session-2): "호스트와 동기" 류 결합이 자연어. props-in/events-out 구조화로 brew 재현성↑.
 - ~~**⭐ `@ports in` 의 command-in 미표현** (ws-tool-card)~~ → **해소 (v0.0.3, 2026-05-27)**: `@ports` 에 `cmd` prefix 추가 — command-in(`setData`·`feed` 등 호스트 호출 갱신 메서드, args 시그니처)을 props-in 과 분리. 파서(`in|cmd|out|deps`)·`spec.ports.cmd`·agent 스텁·openai 프롬프트 반영, 스모크 검증. 증류 5종 .eux 재적용 예정(claude 분담, 메타-only).
 - **파생데이터 / 상태머신 표현 부재** (ws-tool-card, claude-session-2): feed aggregate(4 phase start→args→end→result → 단일 tool)·running→done 전이·display merge 가 `@behavior` 자연어. derived/reducer/상태전이 표현 검토.

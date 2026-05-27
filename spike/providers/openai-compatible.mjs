@@ -27,6 +27,7 @@ function buildMessages(spec, target) {
     `Expand the given .eux natural-language spec into a single "${target}" module.`,
     'Targets — estreuv: a Lit-based micro-rimwork custom element; estreui: a jQuery-class macro-rimwork module; pair: an EstreUI container hosting the estreuv element.',
     'Honor the @ports section as the host contract — in: props injected by the host (exact keys/types), cmd: command-in methods the host calls to update the component (expose with exact signatures on the returned controller, e.g. setData/feed), out: event-out callbacks the component invokes on the host (exact signatures), deps: injected dependencies (never construct internally, receive via opts).',
+    'Honor the @styles section — design tokens and per-selector style hints; emit the corresponding CSS (inject once into the document) so visual output (colors, sizes, classes) is deterministic across models rather than guessed.',
     'Honor the @state / @behavior / @render / @persist sections. Output ONLY code in one ```js fenced block, no prose.',
   ].join('\n');
   const user = 'TARGET: ' + target + '\n\n.eux spec (parsed):\n' + JSON.stringify(spec, null, 2);

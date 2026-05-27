@@ -20,6 +20,7 @@ export async function expand(spec, target, ctx) {
   const st = spec.state.map(s => `//     ${s.name}: ${s.type} = ${s.default}${s.comment ? '   — ' + s.comment : ''}`).join('\n');
   const bh = spec.behavior.map(b => `//     ${b.name}(${b.args}): ${b.desc}`).join('\n');
   const rd = spec.render.split('\n').map(l => '//     ' + l).join('\n');
+  const sd = (spec.styles || '').split('\n').filter(Boolean).map(l => '//     ' + l).join('\n');
   const p = spec.ports || { in: [], cmd: [], out: [], deps: [] };
   const pin = p.in.map(x => `//     ${x.name}: ${x.type}${x.comment ? '   — ' + x.comment : ''}`).join('\n');
   const pcmd = (p.cmd || []).map(x => `//     ${x.name}(${x.args}): ${x.desc}`).join('\n');
@@ -49,6 +50,8 @@ export async function expand(spec, target, ctx) {
     bh || '//     (none)',
     ' * │ render    :',
     rd || '//     (none)',
+    ' * │ styles    (디자인 토큰·셀렉터 스타일 — 결정적 CSS 로 emit, 1회 주입):',
+    sd || '//     (none)',
     ` * │ persist   : ${JSON.stringify(spec.persist)}`,
     ` * │ targets   : ${spec.targets.join(', ')}`,
     ' * └──────────────────────────────────────────────────────────────────',
