@@ -29,3 +29,11 @@
 - **러프(rough)**: `@intent` + 핵심 `@state`/`@behavior` 골자 — 빠른 의도 전달.
 - **디테일(detail)**: 현행 `.eux` 수준(state 타입·default, behavior 설명, render, persist).
 - **하이퍼디테일(hyper)**: 엣지케이스·접근성·성능·의존 주입·라운드트립 기준까지 — 결정적 brew 가능 수준.
+
+## 발견된 표현력 갭 (dogfooding 누적 — EstreGenesis 시드 2.0 입력)
+라이브보드 증류 dogfooding 중 발견된 `.eux` 표현력 한계 — 보강 후보:
+- **`@deps`/`@ports` 섹션 부재** (ws-fab-badge, claude-session-2): 격리 컴포넌트의 호스트 계약(콜백·포트)을 `@behavior` 자연어에 녹여야 함. `@ports`(in: props / out: events) 또는 `@deps` 섹션으로 구조화하면 의존 주입 계약이 명확해지고 brew 일관성↑.
+- **디자인/스타일 토큰 표현 약함** (ws-fab-badge, claude-session-2): 구체 스타일(px·색)이 `@render` 자연어에만. vanilla 는 CSS 주입이 필요한데 디자인 토큰/스타일 슬롯 표현이 없어 하드코딩·`var(--accent)` 폴백으로 처리. 스타일 토큰 참조 표현 검토.
+- **`@state` 외부 결합 자연어 의존** (ws-fab-badge, claude-session-2): "호스트와 동기" 류 결합이 자연어. props-in/events-out 구조화로 brew 재현성↑.
+<!-- codex 교차 검증·후속 증류 부족분은 보고 시 여기 누적 -->
+
