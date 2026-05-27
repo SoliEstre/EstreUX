@@ -60,5 +60,7 @@ deps storage : KeyValueStore   # (옵션) 영속 의존 주입
 - ~~**`@deps`/`@ports` 섹션 부재** (ws-fab-badge, claude-session-2)~~ → **해소 (v0.0.2, 2026-05-27)**: `@ports`(in/out/deps) 섹션 도입 — 위 "`@ports` 호스트 계약" 절 참조. parseEux 파서·spec 구조·agent 스텁·openai 프롬프트 전 경로 반영, 스모크(in 2·out 2·deps 1 렌더)·하위호환 drift PASS 검증. claude-session-2 가 증류 4종(ws-channel-input·ws-fab-badge·ws-conn-bar·ws-tabs)에 적용+re-brew 예정.
 - **디자인/스타일 토큰 표현 약함** (ws-fab-badge, claude-session-2): 구체 스타일(px·색)이 `@render` 자연어에만. vanilla 는 CSS 주입이 필요한데 디자인 토큰/스타일 슬롯 표현이 없어 하드코딩·`var(--accent)` 폴백으로 처리. 스타일 토큰 참조 표현 검토.
 - **`@state` 외부 결합 자연어 의존** (ws-fab-badge, claude-session-2): "호스트와 동기" 류 결합이 자연어. props-in/events-out 구조화로 brew 재현성↑.
+- **⭐ `@ports in` 의 command-in 미표현** (ws-tool-card, claude-session-2): `@ports in` 은 정적 데이터 props(`name:type`) 문법이라 *호스트가 호출하는 명령 메서드*(`setData(snap)`·`setStatus(snap)`·`feed(evt)` — args 시그니처 有)를 담지 못함. 증류 **4종 전부 setX/feed 로 주입받는 보편 패턴**인데 tool-card 의 `feed(evt)` 에서 드러남(`in feed:object` 로 우회, 시그니처는 주석). **props-in(정적/반응형 데이터) ↔ command-in(호스트 호출 메서드)** 구분 표현 필요 — 예: `cmd <name>(<args>) : <설명>` prefix 추가 또는 `in` 에 메서드 시그니처 허용. @ports v0.0.3 보강 후보(codex 교차검증 + 일괄).
+- **파생데이터 / 상태머신 표현 부재** (ws-tool-card, claude-session-2): feed aggregate(4 phase start→args→end→result → 단일 tool)·running→done 전이·display merge 가 `@behavior` 자연어. derived/reducer/상태전이 표현 검토.
 <!-- codex 교차 검증·후속 증류 부족분은 보고 시 여기 누적 -->
 
