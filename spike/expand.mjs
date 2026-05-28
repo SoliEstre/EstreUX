@@ -36,7 +36,7 @@ function parseEux(text) {
       if (key === 'component') spec.component = rest.trim();
       else if (key === 'intent') spec.intent = rest.trim();
       else if (key === 'expansion') rest.trim().split(/\s+/).forEach(kv => { const [k, v] = kv.split('='); spec.expansion[k] = v; });
-      else if (key === 'targets') spec.targets = rest.split(',').map(s => s.trim()).filter(Boolean);
+      else if (key === 'targets') spec.targets = rest.replace(/\s*#.*$/, '').split(',').map(s => s.trim()).filter(Boolean);  // 인라인 # 주석 strip (콤마 포함 주석이 가짜 타깃으로 분리되는 것 방지)
       else if (key === 'persist') { rest.trim().split(/\s+/).forEach(kv => { const [k, v] = kv.split('='); spec.persist[k] = v; }); section = null; }
       else section = key; // state / behavior / render
       continue;
