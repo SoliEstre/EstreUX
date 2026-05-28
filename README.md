@@ -29,6 +29,23 @@ node bin/estreux.mjs drift <file.eux>    # .eux ↔ 산출물 검사
 - brew provider (2026-05-23 확정): **기본 = 호스트 에이전트/서브에이전트** (에이전트 IDE 안에서 별도 키 없이 brew, γ 타깃 병렬 위임 — 실구현 Phase B) · **부가 = API/OAuth** (로컬 Ollama·vLLM·LM Studio · BYOK, 헤드리스·CI용) · **lock = `template`** (결정적 PoC, 현 Phase A 사용). [`spike/providers/`](spike/providers/), trio `model` prefix 로 선택.
 - drift 훅: `git config core.hooksPath .githooks` (또는 `npm install` 시 `prepare` 가 자동 설정). 커밋 전 `.eux`↔산출물 drift 를 차단.
 
+## 다운스트림에서 brew 엔진 가져오기
+
+EstreUX 는 **deps-0 brew 엔진**(소스 ~21KB)이라 다운스트림(시드 마이그레이션 등)이 GitHub 전체 clone(+`.git`) 없이 경량으로 참조할 수 있다.
+
+- **npm 발행 전 (현재) — `giget` 경량 fetch** (brew 엔진만, tarball·`.git` 없음·캐시):
+  ```bash
+  npx giget gh:SoliEstre/EstreUX/spike#v0.1.0 ./estreux-engine
+  node ./estreux-engine/expand.mjs brew <file.eux>
+  ```
+- **npm 발행 후**:
+  ```bash
+  npm i -D estreux        # 또는 npx estreux (일회성)
+  npx estreux brew <file.eux>
+  ```
+
+> `git+ssh` / `github:` dependency 도 가능하나, `prepare` hook(dev hook 설정)이 소비자 환경에서 실행되므로 **`giget` 경량 fetch 또는 npm 발행본을 권장**한다. 버전 고정은 tag(`#v0.1.0`) 또는 semver(`~0.1.0` — 0.x 는 caret 이 minor 를 막으므로 tilde 권장).
+
 ## 범위 주의 (PoC)
 
 Phase A expander 는 **결정적 템플릿 매핑**(LLM stand-in)이다. 단일 spec → 다중 타깃 구조,
@@ -40,5 +57,5 @@ BYOK(Claude·GPT 등)와 로컬 서버(Ollama·vLLM·LM Studio 등)를 수평 �
 
 **Apache License 2.0** (Copyright 2026 SoliEstre (Estre Soliette) — [LICENSE](LICENSE) · [NOTICE](NOTICE)).
 표준 지향 메타-레이어라 **특허 grant** 포함된 Apache 2.0 채택 (런타임 라이브러리 EstreUI/EstreUV 는
-MIT — 레이어별 라이선스, 상호 호환). npm 발행은 Phase B (`package.json` `private:true` = npm 발행 가드,
-GitHub 공개와 무관).
+MIT — 레이어별 라이선스, 상호 호환). **npm 발행 준비 완료** (2026-05-28, v0.1.0) — `files` 화이트리스트로
+brew 엔진만 배포(13파일·~21KB), 내부 자산(examples/dist·adoption·hooks) 제외. `npm publish` 실행은 메인테이너 게이트.

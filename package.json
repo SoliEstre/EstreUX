@@ -1,12 +1,25 @@
 {
   "name": "estreux",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "EstreUX — .eux 자연어 중간 레이어 → EstreUI/EstreUV 다중(γ-driven) expansion. Phase A thin spike.",
   "type": "module",
   "bin": {
     "estreux": "./bin/estreux.mjs"
   },
+  "files": [
+    "bin/",
+    "spike/expand.mjs",
+    "spike/drift-check.mjs",
+    "spike/providers/",
+    "spike/notif-toggle.eux",
+    "docs/",
+    "BREW.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SoliEstre/EstreUX.git"
+  },
+  "keywords": ["eux", "estre", "estreui", "estreuv", "codegen", "brew", "scaffolding", "llm", "ai-native"],
   "scripts": {
     "brew": "node spike/expand.mjs spike/notif-toggle.eux",
     "expand": "node spike/expand.mjs spike/notif-toggle.eux",
