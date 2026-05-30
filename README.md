@@ -1,10 +1,12 @@
 # EstreUX
 
-**EstreUX** (Unified eXperience) — Estre 생태계의 **개발 시점 메타-레이어**. 자연어 중간 소스
+**EstreUX** (Universal eXpression) — Estre 생태계의 **개발 시점 메타-레이어**. 자연어 중간 소스
 `.eux` 를 **brew**(LLM 변환)로 EstreUI(macro-Rimwork) / EstreUV(micro-Rimwork) 코드로 펼친다.
 *(`.eux` 작성 = **expresso** · `.eux` → 코드 변환 = **brew**.)*
 γ-EstreUX-driven: **한 `.eux` spec → 다중 타깃(UI 단독 / UV 단독 / 페어) 자동 생성** = 한 번 brew 로 여러 잔.
 런타임에는 흔적이 없다(런타임 LLM 의존 0).
+
+**Scope**: UI(EstreUI)·View(EstreUV) 에 **한정하지 않는다** — `.eux` 증류는 backend·protocol·state machine·data layer 등 **전 개발 영역**에 적용 가능(2026-05-30 A/B 도그푸딩 검증: 결제 백엔드·VAN POS·인증 머신 증류, 환각 0·93% 충실). *Universal eXpression* = 범용 코드 ↔ spec 증류 표현. (현 Phase A 구현 타깃은 EstreUI/EstreUV.)
 
 > **상태: Phase A — thin spike** (2026-05-22~). 메커니즘·구조·도구 계약을 격리 검증 중.
 > 풀 MVP(다중 채널·reverse sync·Estrim 통합)는 EstreUV 1.0 GA + usage data 후(Phase B).
