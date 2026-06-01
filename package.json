@@ -1,7 +1,7 @@
 {
   "name": "estreux",
-  "version": "0.1.0",
-  "description": "EstreUX — .eux 자연어 중간 레이어 → EstreUI/EstreUV 다중(γ-driven) expansion. Phase A thin spike.",
+  "version": "0.2.0",
+  "description": "EstreUX (Universal eXpression) — .eux 자연어 중간 소스 → 전 개발 영역(UI/backend/protocol/state machine/data) 코드로 brew. UI 한정 아님.",
   "type": "module",
   "bin": {
     "estreux": "./bin/estreux.mjs"

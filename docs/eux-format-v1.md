@@ -1,0 +1,173 @@
+# `.eux` 포맷 v1 — Universal eXpression
+
+> EstreUX 의 자연어 중간 소스 형식 v1. v0([eux-format-v0](eux-format-v0.md)·Phase A·UI 전용)에서 **전 개발 영역**(backend·protocol·state machine·data layer)으로 scope 가 확장(2026-05-30 "Estre **Universal** eXpression" 재정의)됨에 맞춰, 비-UI 증류에서 **이미 실사용되던 디렉티브를 정식화**한다.
+>
+> **쉽게 말하면** — `.eux` 는 "사람이 자연어로 *의도*를 적으면, 그걸 LLM(또는 결정적 템플릿)이 실제 *코드*로 풀어내는(brew) 중간 소스"예요. v0 는 UI 컴포넌트만 다뤘는데, 실제로 백엔드·프로토콜·상태머신을 증류해보니 UI 디렉티브로는 표현이 안 되는 게 많더라고요(예: 모듈 인터페이스, 상태 전이, 바이트 포맷). 그래서 v1 은 그 영역을 위한 디렉티브 4종과 "이 모듈은 어떤 종류인가"를 정하는 **프로파일** 개념을 추가해요.
+>
+> **용어**(v0 계승) — `.eux` 를 쓰는 행위 = **expresso**(의도를 농축해 표현). `.eux` → 코드 변환 = **brew**(CLI `estreux brew`). γ 다중 타깃 = "한 번 brew 로 여러 잔".
+
+---
+
+## 0. v0 → v1 한눈에
+
+| | v0 (Phase A) | v1 (Universal) |
+| --- | --- | --- |
+| **scope** | UI 컴포넌트만 | 전 개발 영역(UI·backend·protocol·state machine·data) |
+| **디렉티브** | 8종 (`@component`·`@intent`·`@expansion`·`@targets`·`@state`·`@behavior`·`@render`·`@persist`) | 8종 **+ 신규 4종** (`@ports`·`@machine`·`@source`·`@deps`) |
+| **분류** | (없음 — 전부 UI 가정) | **컴포넌트 프로파일** 4종 (ui-component·backend-service·protocol-adapter·state-machine) |
+
+⚠️ **v1 은 "추가"이지 "교체"가 아니다.** v0 의 8 디렉티브·결정성 trio·provenance/drift 규칙은 **그대로 계승**돼요. UI 컴포넌트는 v0 와 똑같이 쓰면 되고, 비-UI 모듈만 새 디렉티브를 추가로 쓰면 돼요.
+
+---
+
+## 1. 공통 디렉티브 (v0 계승)
+
+v0 의 8 디렉티브는 v1 에서도 동일하게 유효해요. (상세·예시는 [v0 문서](eux-format-v0.md) 참고)
+
+| directive | 역할 | 한 줄 |
+| --- | --- | --- |
+| `@component` | 식별자(kebab) | 이 모듈의 이름 |
+| `@intent` | 한 줄 의도 | "뭘 하는 모듈인가" 자연어 한 줄 |
+| `@expansion` | 결정성 trio | `temperature=0.0 model=… template=…` (재현성 layer) |
+| `@targets` | 다중 타깃 | 어떤 런타임으로 brew 할지 (§4 에서 분류 정비) |
+| `@state` | 반응 상태 | `name: type = default # 주석` |
+| `@behavior` | 동작 | `시그니처 : 자연어 설명` |
+| `@render` | 렌더 묘사 | 화면에 뭘 그리나 (**ui-component 프로파일 전용** — §3) |
+| `@persist` | 영속 | `key=… fields=…` (localStorage 전제 — backend DB 는 §6 C9 후속) |
+
+---
+
+## 2. 신규 디렉티브 (v1 · 비-UI 증류용)
+
+> **왜 4종이 새로 필요했나** — UI 컴포넌트의 핵심은 "화면에 뭘 그리나(`@render`)"지만, 백엔드·프로토콜·상태머신 모듈의 핵심은 **"어떤 인터페이스로 연결되고(`@ports`)·어떤 상태로 흐르고(`@machine`)·원본이 어디고(`@source`)·뭐에 의존하나(`@deps`)"** 예요. v0 디렉티브로는 이걸 표현할 수 없어서 실제 증류 때 `@render N/A` 같은 빈 선언이 남발됐어요(아래가 그 해소책).
+
+### `@ports` — 모듈의 입출구
+
+**무엇** — 이 모듈이 무엇을 받고(`in`)·무슨 명령을 처리하고(`cmd`)·무엇을 내보내고(`out`)·무엇에 의존하나(`deps`).
+
+**왜** — 백엔드/프로토콜 모듈은 "화면"이 없어요. 대신 "이 모듈에 뭘 넣으면 뭐가 나오나"라는 **인터페이스 계약**이 핵심이에요. `@ports` 가 그 계약을 적는 칸이에요.
+
+**언제** — `backend-service`·`protocol-adapter`·`state-machine` 프로파일(비-UI 모듈). ui-component 에는 보통 안 써요.
+
+**예시**:
+```
+@ports
+  in: WSFrame(JSON envelope · type/name/value/targetAgentId)
+  cmd: register(agentId) · relay(targetAgentId, msg) · close(agentId)
+  out: AgentList broadcast · delivered Ack
+  deps: ws-history(영속 store) · flap-dampening(중복 HELLO churn 방어)
+```
+→ "이 모듈은 WS 프레임을 받아서, register/relay/close 명령을 처리하고, AgentList 와 Ack 를 내보낸다. ws-history 와 flap-dampening 에 기댄다" 를 한눈에.
+
+### `@machine` — 상태와 전이
+
+**무엇** — 이 모듈이 가질 수 있는 상태들(`states`)·상태를 바꾸는 사건(`dispatch`)·전이 조건(`guard`)·상태에서 파생되는 값(`derive`).
+
+**왜** — 승인 흐름, 취소 흐름, 연결 lifecycle 같은 건 "지금 어떤 상태고, 무슨 일이 생기면 어디로 가나"가 본질이에요. 글로 풀면 흩어지는데, `@machine` 으로 적으면 brew 가 정확한 상태머신 코드를 만들 수 있어요.
+
+**언제** — `state-machine` 프로파일 필수. 상태 전이가 있는 backend-service 도.
+
+**예시**:
+```
+@machine
+  states: idle → awaiting-approval → approved | rejected
+  dispatch: submit(req) · approve(by) · reject(reason)
+  guard: approve 는 awaiting-approval 에서만 · 이미 approved 면 무시(idempotent)
+  derive: isFinal = (approved | rejected)
+```
+
+⚠️ **`@machine` 에 바이트 포맷을 욱여넣지 말 것** — 고정길이 와이어 전문의 바이트 레이아웃(offset·길이·인코딩)은 상태머신이 아니에요. 현재는 표현 수단이 없어 임시로 `@machine` 에 묻히는데, v1.x 후속(§6 C8)에서 전용 디렉티브로 분리 예정이에요.
+
+### `@source` — 어디서 왔나 (추적성)
+
+**무엇** — 이 `.eux` 가 증류한 원본 코드의 파일·라인.
+
+**왜** — `.eux` → 코드(brew)는 일방향이 아니에요. **원본과 어긋났는지(drift) 검증**하려면 "원본이 어디였나"를 알아야 해요. `@source` 는 drift-check 의 추적성(provenance)과 직결돼요.
+
+**언제** — 기존 코드를 `.eux` 로 역증류한 경우(backend dogfooding 처럼). 새로 expresso 하는 경우엔 생략 가능.
+
+**예시**:
+```
+@source
+  file: dashboard/live/server.cjs
+  lines: 806-926 (relay 분기 + source/type 정규화)
+```
+
+### `@deps` — 다른 `.eux` 와의 연결
+
+**무엇** — 이 모듈이 의존하는 **다른 `.eux` 파일** 참조(모듈 간 의존 그래프).
+
+**왜** — 큰 시스템은 모듈 여러 개가 엮여요. `@deps` 로 "이 `.eux` 는 저 `.eux` 가 있어야 동작한다"를 적으면, brew 가 의존 순서를 알고·전체 그래프를 그릴 수 있어요. (`@ports.deps` 가 *런타임 의존*이라면, `@deps` 는 *`.eux` 소스 간 의존*이에요.)
+
+**언제** — 여러 `.eux` 로 쪼갠 backend 시스템.
+
+**예시**:
+```
+@deps
+  - ws-core.eux (transport 기반)
+  - history-store.eux (영속 계약)
+```
+
+---
+
+## 3. 컴포넌트 프로파일 — "이 모듈은 어떤 종류인가"
+
+> **왜 프로파일이 필요한가** — v0 는 모든 모듈을 UI 로 가정해서, 백엔드 모듈도 `@render N/A (headless)` 같은 빈 선언을 강제로 달았어요. "이 모듈은 UI 가 아니다"라고 한 번 선언하면, 그런 빈 선언이 사라지고·각 종류에 맞는 디렉티브만 쓰게 돼요.
+
+`@component` 옆(또는 `@intent` 직후)에 **프로파일**을 선언해요:
+
+```
+@component ws-core
+@profile protocol-adapter
+```
+
+### 프로파일별 디렉티브 매트릭스
+
+| 프로파일 | 필수 | 권장 | 금지/불요 |
+| --- | --- | --- | --- |
+| **ui-component** | `@render`·`@targets`(UI Rimwork) | `@state`·`@behavior`·`@persist` | `@ports`·`@machine` (보통 불요) |
+| **backend-service** | `@ports`·`@source` | `@machine`·`@deps`·`@behavior` | `@render`(금지 — 화면 없음)·`@targets` UI Rimwork(금지) |
+| **protocol-adapter** | `@ports` | `@machine`(핸드셰이크)·`@source` | `@render`(금지) |
+| **state-machine** | `@machine` | `@ports`·`@source` | `@render`(금지) |
+
+**쉽게** — UI 면 "화면(@render)" 필수·"포트(@ports)" 불요. 백엔드면 그 반대(@ports 필수·@render 금지). 프로파일만 정해두면 brew 가 "이건 화면 만들 필요 없는 모듈"이라고 알아서 처리해요.
+
+---
+
+## 4. `@targets` 분류 정비
+
+v0 에서 `@targets` 가 UI Rimwork(`estreuv`·`estreui`·`pair`)만 가정해서, 백엔드가 잘못 `@targets estreuv` 를 쓰는 오류가 있었어요. v1 은 둘로 나눠요:
+
+| 분류 | 값 | 누가 |
+| --- | --- | --- |
+| **UI Rimwork** | `estreuv` · `estreui` · `pair` | ui-component 프로파일 |
+| **범용 런타임** | `vanilla` · `node` · (기타) | backend-service·protocol-adapter·state-machine |
+
+→ ws-core 는 올바르게 `@targets vanilla`. backend 가 `estreuv` 를 쓰면 그건 분류 오류예요(brew 가 경고하도록 P2 게이트와 정합).
+
+---
+
+## 5. 결정성·provenance·drift (v0 계승)
+
+v0 와 동일해요:
+- **결정성 trio** (`@expansion temperature + model + template`) — "같은 trio → 거의 동일한 결과"의 약한 재현 claim. 결정적 템플릿은 바이트 동일, LLM 은 "거의 동일"이 정직한 표현.
+- **provenance 헤더** — brew 산출물 머리에 `source sha256 + target + trio` 를 박아요.
+- **drift-check** — 산출물의 source sha 와 현재 `.eux` sha 비교 → 불일치면 drift(재생성 필요). pre-commit hook 으로 커밋 전 차단.
+- **`drift-check --contract`** — v1 의 구조 게이트. `@ports`·`@state`·`@machine` 디렉티브 셋이 산출 코드의 실제 인터페이스와 일치하는지 검증(spike/drift-check.mjs 와 정합 필요).
+
+---
+
+## 6. 아직 안 다룬 것 (v1.x 후속)
+
+> 더 많은 비-UI 증류 사례가 쌓인 뒤 정식화해요(과설계 회피 — RRP P3).
+
+- **C7 보안/정합성 마커** — `[보안:]`·`[정합성:]` 같은 인라인 마커(동시성 race·NPE 전파·SSL 검증 우회 등 발견 표기). 현재 비공식 관행인데 backend 증류의 핵심 가치라 정식 문법 필요.
+- **C8 바이너리/와이어 포맷** — 바이트 레이아웃(offset·길이·인코딩) 전용 디렉티브(`@wire` 등). 지금 `@machine` 에 묻히는 걸 분리.
+- **C9 데이터/트랜잭션** — `@persist`(localStorage 전제)를 backend DB(스키마·쿼리·트랜잭션 경계·회계 흐름)로 확장하거나 `@data` 신설.
+
+---
+
+## 참조
+- [eux-format-v0](eux-format-v0.md) — 현행 기반(8 디렉티브·결정성·drift)
+- [concept-seed §10](../../EstreUF%20common%20workspace/drafts/2026-05-09-estreux-concept-seed.md) — Universal eXpression 재정의
+- 허브 RRP `reports/2026-05-31-eux-spec-universal-expansion.md` — 본 v1 정식화의 근거(Research·Plan P1~P3)
