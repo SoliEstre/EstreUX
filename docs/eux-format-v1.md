@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | **scope** | UI 컴포넌트만 | 전 개발 영역(UI·backend·protocol·state machine·data) |
 | **디렉티브** | 8종 (`@component`·`@intent`·`@expansion`·`@targets`·`@state`·`@behavior`·`@render`·`@persist`) | 8종 **+ 신규 4종** (`@ports`·`@machine`·`@source`·`@deps`) |
-| **분류** | (없음 — 전부 UI 가정) | **컴포넌트 프로파일** 4종 (ui-component·backend-service·protocol-adapter·state-machine) |
+| **분류** | (없음 — 전부 UI 가정) | **컴포넌트 프로파일** 5종 (ui-component·backend-service·protocol-adapter·state-machine·supervisor) |
 
 ⚠️ **v1 은 "추가"이지 "교체"가 아니다.** v0 의 8 디렉티브·결정성 trio·provenance/drift 규칙은 **그대로 계승**돼요. UI 컴포넌트는 v0 와 똑같이 쓰면 되고, 비-UI 모듈만 새 디렉티브를 추가로 쓰면 돼요.
 
@@ -129,8 +129,37 @@ v0 의 8 디렉티브는 v1 에서도 동일하게 유효해요. (상세·예시
 | **backend-service** | `@ports`·`@source` | `@machine`·`@deps`·`@behavior` | `@render`(금지 — 화면 없음)·`@targets` UI Rimwork(금지) |
 | **protocol-adapter** | `@ports` | `@machine`(핸드셰이크)·`@source` | `@render`(금지) |
 | **state-machine** | `@machine` | `@ports`·`@source` | `@render`(금지) |
+| **supervisor** | `@machine`·`@source` | `@deps`·`@behavior` | `@render`(금지)·`@ports.in`(면제 — 자가 발동) |
 
-**쉽게** — UI 면 "화면(@render)" 필수·"포트(@ports)" 불요. 백엔드면 그 반대(@ports 필수·@render 금지). 프로파일만 정해두면 brew 가 "이건 화면 만들 필요 없는 모듈"이라고 알아서 처리해요.
+**쉽게** — UI 면 "화면(@render)" 필수·"포트(@ports)" 불요. 백엔드면 그 반대(@ports 필수·@render 금지). 누가 불러서가 아니라 *스스로 깨어나* 무언가를 지켜보는 모듈(워치독·워처)이면 supervisor — 받는 포트가 없는 대신 상태머신(@machine)으로 "언제 깨어나 뭘 하나"를 적어요. 프로파일만 정해두면 brew 가 "이건 화면 만들 필요 없는 모듈"이라고 알아서 처리해요.
+
+### `supervisor` 프로파일 — 스스로 깨어나 지켜보는 모듈
+
+**무엇** — 서버·브릿지가 살아있나 지켜보다 죽으면 되살리는 **워치독**(`ws-watchdog.cjs`), 또는 일정 주기로 깨어나 받은 편지함을 확인하는 **워처**(`ws-wait.sh`/self-wake)처럼, *누가 호출해서가 아니라 스스로*(폴링 또는 이벤트 트리거) 발동하는 백그라운드 감시·생명주기 관리 모듈이에요.
+
+**왜 따로 두나** — backend-service 는 "뭘 받으면(@ports.in) 뭘 돌려준다"가 핵심인데, supervisor 는 **받는 입구가 없어요**. 그래서 backend-service 로 분류하면 `@ports.in N/A` 같은 빈 선언을 강제로 달게 돼요(EG canonical 6 모듈 중 self-wake-watcher·watchdog 2개가 실제로 이 어색함에 걸렸어요). supervisor 프로파일은 그 입구 요구를 면제해요.
+
+**핵심 표현**:
+- **`@ports.in` 면제** — 입구(inbound)가 없음. 대신 `@ports.cmd`(start/stop 같은 제어)·`@ports.out`(재기동했다·죽음 감지 같은 통지)만 쓸 수 있어요.
+- **감시 대상은 `@deps`(또는 `@ports.deps`)에** — "내가 무엇을 지켜보나"(server:7878·메인 브릿지 등)를 의존으로 적어요.
+- **`@machine` 으로 발동 lifecycle** — "유휴 → (주기/이벤트) 깨어남 → 점검 → 정상이면 재무장 / 죽었으면 재기동" 흐름을 상태머신으로.
+
+**예시**:
+```
+@component ws-watchdog
+@profile supervisor
+@machine
+  states: idle → probe → (alive: rearm) | (dead: respawn → rearm)
+  dispatch: tick(interval) · onWSClose(target)
+  guard: respawn 은 TCP 재확인 후에만 (false-positive 방어)
+  derive: degraded = (respawn_count > threshold)
+@deps
+  - server.eux (감시 대상 :7878)
+  - local-bridge.eux (감시 대상 메인 브릿지)
+@source
+  file: dashboard/live/ws-watchdog.cjs
+```
+→ "받는 입구는 없고, 주기적으로(또는 WS close 이벤트로) 깨어나 server·bridge 생존을 점검해 죽었으면 되살린다"를 한눈에. `@ports.in` 빈 선언 없이 깔끔하게.
 
 ---
 
@@ -160,10 +189,12 @@ v0 와 동일해요:
 ## 6. 아직 안 다룬 것 (v1.x 후속)
 
 > 더 많은 비-UI 증류 사례가 쌓인 뒤 정식화해요(과설계 회피 — RRP P3).
+>
+> **우선순위**(EG Constellation 1차지식 review 반영, 2026-06-01): **C7 HIGH > C8 MEDIUM > C9 MEDIUM-LOW**. C7 은 backend 증류에서 동시성 race·SSL 우회·token transit 같은 즉시 위험을 표기하는 거라 가장 급하고(EG redaction discipline 과 보완), C9 는 DB Mode-C 운영(Mode B 30일+ 누적·promotion-decision artifact) 시점에 RRP P3 와 정합시켜 정식화해요.
 
-- **C7 보안/정합성 마커** — `[보안:]`·`[정합성:]` 같은 인라인 마커(동시성 race·NPE 전파·SSL 검증 우회 등 발견 표기). 현재 비공식 관행인데 backend 증류의 핵심 가치라 정식 문법 필요.
-- **C8 바이너리/와이어 포맷** — 바이트 레이아웃(offset·길이·인코딩) 전용 디렉티브(`@wire` 등). 지금 `@machine` 에 묻히는 걸 분리.
-- **C9 데이터/트랜잭션** — `@persist`(localStorage 전제)를 backend DB(스키마·쿼리·트랜잭션 경계·회계 흐름)로 확장하거나 `@data` 신설.
+- **C7 보안/정합성 마커** *(HIGH)* — `[보안:]`·`[정합성:]` 같은 인라인 마커(동시성 race·NPE 전파·SSL 검증 우회 등 발견 표기). 현재 비공식 관행인데 backend 증류의 핵심 가치라 정식 문법 필요. 후보 디렉티브 `@hazards`/`@safety` + `drift-check --safety` 로 산출 코드의 hazard 패턴 verify.
+- **C8 바이너리/와이어 포맷** *(MEDIUM)* — 바이트 레이아웃(offset·길이·인코딩) 전용 디렉티브(`@wire` 등). 지금 `@machine` 에 묻히는 걸 분리. EG canonical 의 `wire:` 섹션(handshake/envelope/message_shape)과 1:1 매핑 가능 → `drift-check --wire` 로 산출 codec ↔ wire SSoT 일치 검증.
+- **C9 데이터/트랜잭션** *(MEDIUM-LOW)* — `@persist`(localStorage 전제)를 backend DB(스키마·쿼리·트랜잭션 경계·회계 흐름)로 확장하거나 `@data` 신설. DB Mode-C 시점 정식화(C7/C8 보다 후).
 
 ---
 

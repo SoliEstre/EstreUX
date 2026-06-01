@@ -14,7 +14,7 @@
   - `@source` (file/lines) — 원본 코드 추적성(drift-check provenance 직결).
   - `@deps` — 다른 `.eux` 간 의존 그래프.
   - v0 8 디렉티브·결정성 trio·provenance/drift 규칙은 **그대로 계승**(v1 은 추가이지 교체가 아님).
-- **컴포넌트 프로파일** — `ui-component` / `backend-service` / `protocol-adapter` / `state-machine`. 프로파일별 필수·금지 디렉티브 매트릭스 (`@render` 는 ui-component 전용 → backend `@render N/A` 빈 선언 남발 해소).
+- **컴포넌트 프로파일** — `ui-component` / `backend-service` / `protocol-adapter` / `state-machine` / `supervisor`. 프로파일별 필수·금지 디렉티브 매트릭스 (`@render` 는 ui-component 전용 → backend `@render N/A` 빈 선언 남발 해소). `supervisor`(워치독·워처 패턴)는 `@ports.in` 면제 — 받는 입구 없이 스스로 깨어나 감시·재기동(EG review 반영).
 - **`@targets` 분류 정비** — UI Rimwork(`estreuv`/`estreui`/`pair`) vs 범용 런타임(`vanilla`/`node`). backend 가 UI Rimwork 쓰던 타깃 오류 차단.
 
 ### Changed
@@ -23,6 +23,7 @@
 
 ### Notes
 - 신규 디렉티브 4종은 ws-core(허브 라이브보드 WS 코어)·결제 도메인 backend A/B 도그푸딩(비-UI 19 컴포넌트)에서 **이미 실사용되던 것의 사후 정식화** — 위험 낮음(RRP 근거: 허브 `reports/2026-05-31-eux-spec-universal-expansion.md` P1~P2).
+- **EG(EstreGenesis) Constellation 1차지식 review(2026-06-01) 반영**: ① `@machine`·`@ports` 4 element 가 EG canonical 6 `.eux`(gateway-client v2.5.3 등)와 정합 OK 확인(형식차는 brew 단계 interchangeable) ② **`supervisor` 프로파일 갭** 추가 — canonical 6 모듈 중 self-wake-watcher·watchdog 2개가 4 프로파일에 forced fit 되던 어색함 해소 ③ C7~C9 우선순위 **C7 HIGH > C8 MEDIUM > C9 MEDIUM-LOW** 명문화. EG 는 v1.x ship 시 자체 Constellation `.eux` 6개를 신규 디렉티브+프로파일로 incremental update 가능, drift-check `--contract` dogfooding sample(gateway-client.eux) 제공 가능.
 - C7~C9(보안/정합성 인라인 마커·바이너리/와이어 포맷·DB/트랜잭션 `@data`)은 더 많은 비-UI 사례 축적 후 v1.x 후속에서 정식화(과설계 회피).
 
 ## 0.1.0 (2026-05-28)
