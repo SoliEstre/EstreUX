@@ -67,7 +67,7 @@ function extractContractNames(raw) {
   for (const line of buckets.machine) {
     const st = line.match(/^\s*states\s*:\s*(.+)$/);
     if (st) st[1].split(/[·,]/).forEach(s => { const m = s.match(/[A-Za-z_]\w*/); if (m) machine.add(m[0]); });
-    const dp = line.match(/^\s*dispatch\s+(\w+)/);
+    const dp = line.match(/^\s*dispatch[:\s]\s*(\w+)/);   // "dispatch feed" · "dispatch: tick" 양형
     if (dp && !ports.has(dp[1])) machine.add(dp[1]);
   }
 
