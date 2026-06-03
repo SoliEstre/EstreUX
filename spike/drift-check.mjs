@@ -5,7 +5,11 @@
  * Phase A (기본): 각 생성물의 provenance 헤더 sha256 ↔ 현재 .eux sha256 비교.
  *   불일치·누락 → drift (exit 1). pre-commit hook 용.
  *
- * Phase B (--contract): .eux @ports 계약 이름 → 결과물 존재 여부 체크.
+ * Phase B (--contract): .eux 구조 계약 → 결과물 존재 여부 체크 (카테고리별).
+ *   ports   : @ports cmd/out 함수명 — 호스트 인터페이스(강, 반드시).
+ *   mount   : 진입점.
+ *   machine : @machine states/dispatch — 상태머신(중).
+ *   @state 필드 정합은 일반 식별자 false-match 위험으로 P3(AST) 영역 — 얇은 게이트 제외.
  *   provider=agent: sha staleness 는 warn 만 (exit 0 유지), 계약 체크는 수행.
  *   provider=template 등: sha staleness 도 drift (exit 1).
  *
@@ -33,30 +37,41 @@ function extractProvider(head) {
   return (head.match(/provider\s*:\s*(\w+)/) || [])[1] || null;
 }
 
-// ── 계약 이름 추출 (.eux raw 에서) ───────────────────────────────
+// ── 구조 계약 추출 (.eux raw → 카테고리별) ──────────────────────────
+//   ports   : @ports cmd/out 함수명 (호스트 인터페이스 · 강)
+//   mount   : @behavior/@machine 의 mount 진입점 언급
+//   machine : @machine states 리터럴 + dispatch 진입점 (상태머신 · 중; ports 중복 제외)
+//   @state 필드는 일반 식별자 false-match 위험으로 제외 (P3 AST 영역).
 function extractContractNames(raw) {
   const lines = raw.split('\n');
-  const names = new Set();
-
-  // @ports 섹션 수집
+  const buckets = { ports: [], behavior: [], machine: [] };
   let section = null;
-  const sectionLines = { ports: [], behavior: [] };
   for (const line of lines) {
-    if (/^@ports\b/.test(line))               { section = 'ports'; continue; }
-    if (/^@(?:behavior|machine)\b/.test(line)) { section = 'behavior'; continue; }
-    if (/^@/.test(line))                       { section = null; continue; }
-    if (section) sectionLines[section].push(line);
+    if (/^@ports\b/.test(line))    { section = 'ports'; continue; }
+    if (/^@machine\b/.test(line))  { section = 'machine'; continue; }
+    if (/^@behavior\b/.test(line)) { section = 'behavior'; continue; }
+    if (/^@/.test(line))           { section = null; continue; }
+    if (section) buckets[section].push(line);
   }
 
   // @ports: cmd NAME( / out NAME(
-  for (const line of sectionLines.ports) {
-    const c = line.match(/^\s*cmd\s+(\w+)\s*\(/);   if (c) names.add(c[1]);
-    const o = line.match(/^\s*out\s+(\w+)\s*\(/);   if (o) names.add(o[1]);
+  const ports = new Set();
+  for (const line of buckets.ports) {
+    const c = line.match(/^\s*cmd\s+(\w+)\s*\(/);   if (c) ports.add(c[1]);
+    const o = line.match(/^\s*out\s+(\w+)\s*\(/);   if (o) ports.add(o[1]);
   }
-  // @behavior/@machine: mount 언급 시 추가
-  if (sectionLines.behavior.some(l => /\bmount\b/.test(l))) names.add('mount');
+  // mount 진입점
+  const mount = buckets.behavior.some(l => /\bmount\b/.test(l)) || buckets.machine.some(l => /\bmount\b/.test(l));
+  // @machine: states: A · B · C  +  dispatch NAME (ports 에 이미 있으면 중복 제외)
+  const machine = new Set();
+  for (const line of buckets.machine) {
+    const st = line.match(/^\s*states\s*:\s*(.+)$/);
+    if (st) st[1].split(/[·,]/).forEach(s => { const m = s.match(/[A-Za-z_]\w*/); if (m) machine.add(m[0]); });
+    const dp = line.match(/^\s*dispatch\s+(\w+)/);
+    if (dp && !ports.has(dp[1])) machine.add(dp[1]);
+  }
 
-  return [...names];
+  return { ports: [...ports], mount, machine: [...machine] };
 }
 
 // ── 메인 루프 ─────────────────────────────────────────────────────
@@ -90,17 +105,22 @@ for (const id of targets) {
     console.log(`  ✓ ${id.padEnd(8)} in sync`);
   }
 
-  // Phase B: --contract 계약 체크
+  // Phase B: --contract 구조 계약 체크 (ports 강 · mount · machine 중)
   if (contractMode) {
-    const names = extractContractNames(raw);
-    if (names.length === 0) {
+    const c = extractContractNames(raw);
+    const checks = [
+      ...c.ports.map(n => ['ports', n]),
+      ...(c.mount ? [['mount', 'mount']] : []),
+      ...c.machine.map(n => ['machine', n]),
+    ];
+    if (checks.length === 0) {
       console.log(`    contract  (계약 이름 없음 — skip)`);
     } else {
-      for (const name of names) {
+      for (const [cat, name] of checks) {
         if (new RegExp(`\\b${name}\\b`).test(head)) {
-          console.log(`    contract  ✓ ${name}`);
+          console.log(`    contract  ✓ ${cat.padEnd(7)} ${name}`);
         } else {
-          console.log(`    contract  ✗ ${name} — 결과물에 없음`);
+          console.log(`    contract  ✗ ${cat.padEnd(7)} ${name} — 결과물에 없음`);
           drift++;
         }
       }
