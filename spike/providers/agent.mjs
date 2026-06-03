@@ -17,18 +17,26 @@
 export const id = 'agent';
 
 export async function expand(spec, target, ctx) {
+  // 프로파일 (eux-format v1 §3): 비-UI 는 @render 생략 · supervisor 는 @ports.in 면제
+  const profile = spec.profile || 'ui-component';
+  const isUI = profile === 'ui-component';
+  const isSupervisor = profile === 'supervisor';
+
   const st = spec.state.map(s => `//     ${s.name}: ${s.type} = ${s.default}${s.comment ? '   — ' + s.comment : ''}`).join('\n');
   const bh = spec.behavior.map(b => `//     ${b.name}(${b.args}): ${b.desc}`).join('\n');
   const rd = spec.render.split('\n').map(l => '//     ' + l).join('\n');
   const sd = (spec.styles || '').split('\n').filter(Boolean).map(l => '//     ' + l).join('\n');
   const md = (spec.machine || '').split('\n').filter(Boolean).map(l => '//     ' + l).join('\n');
+  const srcD = (spec.source || '').split('\n').filter(Boolean).map(l => '//     ' + l).join('\n');
+  const depsD = (spec.deps || '').split('\n').filter(Boolean).map(l => '//     ' + l).join('\n');
   const p = spec.ports || { in: [], cmd: [], out: [], deps: [] };
   const pin = p.in.map(x => `//     ${x.name}: ${x.type}${x.comment ? '   — ' + x.comment : ''}`).join('\n');
   const pcmd = (p.cmd || []).map(x => `//     ${x.name}(${x.args}): ${x.desc}`).join('\n');
   const pout = p.out.map(x => `//     ${x.name}(${x.args}): ${x.desc}`).join('\n');
   const pdeps = p.deps.map(x => `//     ${x.name}: ${x.type}${x.comment ? '   — ' + x.comment : ''}`).join('\n');
   const model = (ctx && ctx.modelName) || 'agent';
-  return [
+
+  const L = [
     '/* ┌─ @agent-brew ───────────────────────────────────────────────────',
     ` * │ 에이전트(${model})가 직접 brew — 아래 명세를 target="${target}" 코드로 구현하고`,
     ' * │ 이 @agent-brew 블록 전체를 실제 코드로 대체하세요. (위 provenance 헤더는 유지 → drift-check)',
@@ -36,30 +44,27 @@ export async function expand(spec, target, ctx) {
     ' * │ 기본은 brew 요청을 받은 에이전트(또는 서브에이전트)의 직접 구현입니다.',
     ' * │',
     ` * │ component : ${spec.component}`,
+    ` * │ profile   : ${profile}`,
     ` * │ intent    : ${spec.intent}`,
-    ' * │ ports.in  (props 주입 — 호스트가 opts/초기값으로 전달, 정확한 키·타입 준수):',
-    pin || '//     (none)',
-    ' * │ ports.cmd (command-in — 호스트가 호출하는 갱신 메서드, 정확한 시그니처로 컨트롤러에 노출):',
-    pcmd || '//     (none)',
-    ' * │ ports.out (events-out 콜백 — 호스트로 통지, 정확한 시그니처 준수):',
-    pout || '//     (none)',
-    ' * │ ports.deps(주입 의존 — 내부 생성 금지, opts 로 주입받아 사용):',
-    pdeps || '//     (none)',
-    ' * │ state     :',
-    st || '//     (none)',
-    ' * │ behavior  :',
-    bh || '//     (none)',
-    ' * │ render    :',
-    rd || '//     (none)',
-    ' * │ styles    (디자인 토큰·셀렉터 스타일 — 결정적 CSS 로 emit, 1회 주입):',
-    sd || '//     (none)',
-    ' * │ machine   (파생데이터/상태머신 — reducer dispatch·상태전이·파생필드, 명세대로 구현):',
-    md || '//     (none)',
-    ` * │ persist   : ${JSON.stringify(spec.persist)}`,
-    ` * │ targets   : ${spec.targets.join(', ')}`,
-    ' * └──────────────────────────────────────────────────────────────────',
-    ' */',
-    `// TODO(@agent-brew): "${spec.component}" 를 ${target} 코드로 구현 — 위 명세 참조.`,
-    '',
-  ].join('\n');
+  ];
+  if (srcD) L.push(' * │ source    (역증류 원본 — 이 코드의 출처, 참조·정합용):', srcD);
+  if (!isSupervisor) L.push(' * │ ports.in  (props 주입 — 호스트가 opts/초기값으로 전달, 정확한 키·타입 준수):', pin || '//     (none)');
+  L.push(' * │ ports.cmd (command-in — 호스트가 호출하는 갱신 메서드, 정확한 시그니처로 컨트롤러에 노출):', pcmd || '//     (none)');
+  L.push(' * │ ports.out (events-out 콜백 — 호스트로 통지, 정확한 시그니처 준수):', pout || '//     (none)');
+  L.push(' * │ ports.deps(주입 의존 — 내부 생성 금지, opts 로 주입받아 사용):', pdeps || '//     (none)');
+  L.push(' * │ state     :', st || '//     (none)');
+  L.push(' * │ behavior  :', bh || '//     (none)');
+  if (isUI) {
+    L.push(' * │ render    :', rd || '//     (none)');
+    L.push(' * │ styles    (디자인 토큰·셀렉터 스타일 — 결정적 CSS 로 emit, 1회 주입):', sd || '//     (none)');
+  }
+  L.push(' * │ machine   (파생데이터/상태머신 — reducer dispatch·상태전이·파생필드, 명세대로 구현):', md || '//     (none)');
+  if (depsD) L.push(' * │ deps      (.eux 소스 의존 — 모듈 그래프, 참조용):', depsD);
+  L.push(` * │ persist   : ${JSON.stringify(spec.persist)}`);
+  L.push(` * │ targets   : ${spec.targets.join(', ')}`);
+  L.push(' * └──────────────────────────────────────────────────────────────────');
+  L.push(' */');
+  L.push(`// TODO(@agent-brew): "${spec.component}" 를 ${target} 코드로 구현 — 위 명세 참조.`);
+  L.push('');
+  return L.join('\n');
 }
