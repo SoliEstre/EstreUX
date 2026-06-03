@@ -27,13 +27,14 @@ const baseDir = dirname(resolve(euxPath));
 
 // ---- .eux 파서 (약한 구조 — @directive 섹션) ----
 function parseEux(text) {
-  const spec = { component: '', intent: '', expansion: {}, targets: [], state: [], behavior: [], render: '', styles: '', machine: '', persist: {}, ports: { in: [], cmd: [], out: [], deps: [] } };
+  const spec = { component: '', profile: '', intent: '', expansion: {}, targets: [], state: [], behavior: [], render: '', styles: '', machine: '', source: '', deps: '', persist: {}, ports: { in: [], cmd: [], out: [], deps: [] } };
   let section = null;
   for (const line of text.split(/\r?\n/)) {
     const m = line.match(/^@(\w+)\s*(.*)$/);
     if (m) {
       const [, key, rest] = m;
       if (key === 'component') spec.component = rest.trim();
+      else if (key === 'profile') { spec.profile = rest.trim(); section = null; }   // v1: 컴포넌트 프로파일(ui-component/backend-service/protocol-adapter/state-machine/supervisor)
       else if (key === 'intent') spec.intent = rest.trim();
       else if (key === 'expansion') rest.trim().split(/\s+/).forEach(kv => { const [k, v] = kv.split('='); spec.expansion[k] = v; });
       else if (key === 'targets') spec.targets = rest.replace(/\s*#.*$/, '').split(',').map(s => s.trim()).filter(Boolean);  // 인라인 # 주석 strip (콤마 포함 주석이 가짜 타깃으로 분리되는 것 방지)
@@ -56,6 +57,12 @@ function parseEux(text) {
       // @machine — 파생데이터/상태머신(reducer dispatch·상태전이·파생필드 매핑, 구조화 자연어).
       // cmd 류 dispatch 진입점이 (현 상태, event) → 새 상태 reducer 일 때 그 명세를 담는다.
       if (line.trim()) spec.machine += (spec.machine ? '\n' : '') + line.trim();
+    } else if (section === 'source') {
+      // @source (v1) — 역증류 원본 추적(file·lines). drift-check provenance 와 직결.
+      if (line.trim()) spec.source += (spec.source ? '\n' : '') + line.trim();
+    } else if (section === 'deps') {
+      // @deps (v1) — 다른 .eux 소스 간 의존(@ports.deps=런타임 의존과 구분).
+      if (line.trim()) spec.deps += (spec.deps ? '\n' : '') + line.trim();
     } else if (section === 'ports') {
       // @ports — 격리 컴포넌트의 호스트 계약. 줄 prefix 로 방향 구분:
       //   in   <name> : <type>  # comment        (props-in, 호스트→컴포넌트 정적/반응형 데이터 주입)
@@ -85,6 +92,7 @@ function header(targetId, providerId) {
   return [
     '// ┌─ estreux:expanded ──────────────────────────────────────────────',
     `// │ source : ${spec.component}.eux  (sha256:${sha})`,
+    `// │ profile: ${spec.profile || 'ui-component'}`,
     `// │ target : ${targetId}   provider : ${providerId}`,
     `// │ trio   : ${trio}`,
     '// │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run brew` 로 재생성 (drift-check 감시).',
