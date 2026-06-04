@@ -27,7 +27,9 @@ const baseDir = dirname(resolve(euxPath));
 
 // ---- .eux 파서 (약한 구조 — @directive 섹션) ----
 function parseEux(text) {
-  const spec = { component: '', profile: '', intent: '', expansion: {}, targets: [], state: [], behavior: [], render: '', styles: '', machine: '', source: '', deps: '', persist: {}, ports: { in: [], cmd: [], out: [], deps: [] } };
+  // v1/v1.1 자유텍스트 directive — §2(machine/source/deps) + §2.5 adapter contract 7종.
+  const FREETEXT_DIRECTIVES = new Set(['machine', 'source', 'deps', 'runtime', 'roles', 'wire', 'routing', 'delivery', 'redaction', 'operation_discipline']);
+  const spec = { component: '', profile: '', intent: '', expansion: {}, targets: [], state: [], behavior: [], render: '', styles: '', machine: '', source: '', deps: '', runtime: '', roles: '', wire: '', routing: '', delivery: '', redaction: '', operation_discipline: '', persist: {}, ports: { in: [], cmd: [], out: [], deps: [] } };
   let section = null;
   for (const line of text.split(/\r?\n/)) {
     const m = line.match(/^@(\w+)\s*(.*)$/);
@@ -53,16 +55,10 @@ function parseEux(text) {
     } else if (section === 'styles') {
       // @styles — 디자인 토큰 + 셀렉터별 스타일 힌트(자유 텍스트). brew 가 결정적 CSS 로 emit.
       if (line.trim()) spec.styles += (spec.styles ? '\n' : '') + line.trim();
-    } else if (section === 'machine') {
-      // @machine — 파생데이터/상태머신(reducer dispatch·상태전이·파생필드 매핑, 구조화 자연어).
-      // cmd 류 dispatch 진입점이 (현 상태, event) → 새 상태 reducer 일 때 그 명세를 담는다.
-      if (line.trim()) spec.machine += (spec.machine ? '\n' : '') + line.trim();
-    } else if (section === 'source') {
-      // @source (v1) — 역증류 원본 추적(file·lines). drift-check provenance 와 직결.
-      if (line.trim()) spec.source += (spec.source ? '\n' : '') + line.trim();
-    } else if (section === 'deps') {
-      // @deps (v1) — 다른 .eux 소스 간 의존(@ports.deps=런타임 의존과 구분).
-      if (line.trim()) spec.deps += (spec.deps ? '\n' : '') + line.trim();
+    } else if (FREETEXT_DIRECTIVES.has(section)) {
+      // 자유텍스트 directive 누적 — @machine(상태머신; 복수 블록은 같은 spec.machine 에 반복 누적, EG 권장 2026-06-04) ·
+      //   @source(원본추적) · @deps(.eux 의존) · v1.1 adapter contract 7종(@runtime/@roles/@wire/@routing/@delivery/@redaction/@operation_discipline, §2.5).
+      if (line.trim()) spec[section] = (spec[section] ? spec[section] + '\n' : '') + line.trim();
     } else if (section === 'ports') {
       // @ports — 격리 컴포넌트의 호스트 계약. 줄 prefix 로 방향 구분:
       //   in   <name> : <type>  # comment        (props-in, 호스트→컴포넌트 정적/반응형 데이터 주입)
