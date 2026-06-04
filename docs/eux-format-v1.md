@@ -110,6 +110,74 @@ v0 의 8 디렉티브는 v1 에서도 동일하게 유효해요. (상세·예시
 
 ---
 
+## 2.5 운영 정책 디렉티브 — adapter contract (7종, v1.1)
+
+> **왜 7종이 더 필요했나** — §2 의 `@ports`/`@machine` 은 *컴포넌트 spec*(이 모듈이 뭐고 내부적으로 어떻게 동작하나)을 표현해요. 그런데 런타임 어댑터(에이전트 ↔ 보드 게이트웨이 같은)는 *adapter contract*(이 모듈을 구현하는 adopter 가 **따라야 할 운영 정책**)를 표현해야 해요 — 연결 규칙·역할 진실·와이어 규약·라우팅·전달 보장·redaction·운영 원칙. 이건 "단일 vs 다중 책임" 문제가 아니라 **spec genre 차이**(component spec vs policy contract)예요. v1.1 은 이 7 축을 `metadata:` 통합 형식 대신 `@directive` super-set 으로 흡수해, parseEux/drift-check 단일 게이트를 유지하면서 정보 손실 0 으로 표현해요. (EG canonical `gateway-client.eux` 12-dim SSoT 의 §2 외 7 축 정합, 2026-06-04 협의 — Q1 결정 A.)
+
+### `@runtime` — 실행 정책
+engine · concurrency 모델 · keepAlive · poll interval + **anti-pattern 마커**(display heartbeat emit 금지 · auto_pong false · client-side idle heartbeat 를 agent activity 로 쓰지 말 것).
+```
+@runtime
+  engine: turn-held (15s drain window)
+  concurrency: single-connection
+  keepAlive: ws-ping only (no app heartbeat)
+  forbidden: display_heartbeat · auto_pong · idle_heartbeat_as_activity
+```
+
+### `@roles` — 역할 + 진실 원천
+canonical roles + **role_truth doctrine**(server 분류 AgentList = 진실, `AgentHello.value.role` = hint) + onboard_ack per-role.
+```
+@roles
+  canonical: board · main · local · upstream · collab
+  role_truth: server AgentList authoritative; AgentHello.role = hint only
+  onboard_ack: local→Delegate 대기 · upstream/collab→informational welcome + autonomous peer
+```
+
+### `@wire` — 와이어 규약 (C8 정식화)
+envelope convention(CUSTOM-wrapped vs bare top-level) + ack tier 시맨틱(delivered/processed/decided). EG canonical `wire:` 섹션과 1:1 → `drift-check --wire` 로 산출 codec ↔ wire SSoT 검증.
+```
+@wire
+  envelope: CUSTOM-wrapped {type:CUSTOM, name, value} | bare top-level {type, ...}
+  ack_tier: delivered (transport) · processed (agent WILCO) · decided (자율결정 후 통지)
+```
+
+### `@routing` — 라우팅 분류
+§13.16.9 4-group filter(board-directed | A2A-intent | handshake | notice) + telemetry 제외.
+```
+@routing
+  groups: board-directed | A2A-intent | handshake | notice
+  telemetry_exclude: codex-watch threadId/runId (reply-window 제외)
+```
+
+### `@delivery` — 전달 보장
+dedup + msgId watermark + redelivery 정책 + at-most/at-least-once 시맨틱(§13.13.2).
+```
+@delivery
+  dedup: msgId LRU watermark (1024 / 1h TTL)
+  redelivery: pending FIFO · 30s threshold · max 3 · RelayUnreachable
+  semantics: at-most-once default; at-least-once on RELAY_REDELIVERY
+```
+
+### `@redaction` — 민감정보 차단
+credential/PII redaction hook — send/log 전 적용. (C7 `@hazards` 의 credential 표면과 정합 — Q4 결정 A: credential/무결성 한정.)
+```
+@redaction
+  hook: pre-send + pre-log
+  targets: credential (token/key) · PII · 실서비스명/워크스페이스명
+```
+
+### `@operation_discipline` — 운영 원칙
+event-driven 운영 원칙 + anti-pattern 카탈로그.
+```
+@operation_discipline
+  principle: event-driven (활동 연동 emit; 무활동 시 자율 heartbeat 금지)
+  anti_patterns: false-alive heartbeat · ack storm · silent drop
+```
+
+**프로파일 정합**: 7 directive 는 **protocol-adapter**(런타임 어댑터·게이트웨이) 권장, **backend-service**(서버) 도 `@routing`/`@delivery`/`@redaction` 부분 채택. ui-component/state-machine/supervisor 는 보통 불요.
+
+---
+
 ## 3. 컴포넌트 프로파일 — "이 모듈은 어떤 종류인가"
 
 > **왜 프로파일이 필요한가** — v0 는 모든 모듈을 UI 로 가정해서, 백엔드 모듈도 `@render N/A (headless)` 같은 빈 선언을 강제로 달았어요. "이 모듈은 UI 가 아니다"라고 한 번 선언하면, 그런 빈 선언이 사라지고·각 종류에 맞는 디렉티브만 쓰게 돼요.
@@ -173,6 +241,24 @@ v0 에서 `@targets` 가 UI Rimwork(`estreuv`·`estreui`·`pair`)만 가정해�
 | **범용 런타임** | `vanilla` · `node` · (기타) | backend-service·protocol-adapter·state-machine |
 
 → ws-core 는 올바르게 `@targets vanilla`. backend 가 `estreuv` 를 쓰면 그건 분류 오류예요(brew 가 경고하도록 P2 게이트와 정합).
+
+---
+
+## 4.5 모듈 분리 임계 (soft-guideline, v1.1)
+
+> **왜 임계가 필요한가** — 큰 모듈을 단일 `.eux` 로 증류하면 본질(구현 깊이)이 spec 표면으로 압축돼 누락돼요(허브 dogfooding G3/G6 — `server.cjs` 1072줄 → 1:8 압축, 본질 ~990줄이 빈 스텁인데 `--contract` PASS). `@deps` 모듈 분리로 본질을 나눠 담되, 언제 분리할지 입계가 필요해요. **soft-guideline — 권장이지 강제 아님.**
+
+**권장 입계**:
+- **단일 유지**: ~100줄 이하 + 단일 책임(단일 sub-domain)
+- **분리 (@deps)**: >100줄 + 다중 관심사(직교 sub-domain 동거 — HTTP+WS+KEY-MGMT 처럼)
+
+**도메인별 차등**:
+- **backend-service**: ~100줄 단위 + 직교 sub-domain 분리 (예: `server` → core / relay / keys / history)
+- **protocol-adapter**: CUSTOM cluster 별 분리 (예: `gateway-client` → handshake / a2a / attachments / key-mgmt)
+- **ui-component**: 위젯 단위(자명)
+- **single-responsibility 예외**: mode 전이 invariant 를 reducer 가 carry 하는 경우(`history-store` mode A/B/C) cross-eux invariant 표현 부담으로 **단일 유지** 권장
+
+분리 시 부모 manifest `.eux` 가 `@deps` 로 sub-eux 를 참조하고 운영 정책(`@runtime`/`@roles` 등 §2.5)을 carry 해요.
 
 ---
 
