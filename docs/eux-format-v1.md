@@ -75,6 +75,8 @@ v0 의 8 디렉티브는 v1 에서도 동일하게 유효해요. (상세·예시
 
 `drift-check --contract` 는 **명시 `semantics:` 우선 · 없으면 profile-implicit** 으로 ports.in 잔존 검증을 분기해요. (2026-06-04 도그푸딩 G8 — `server.eux` ports.in(`wsFrame`/`httpReq`) false drift 해소에서 정식화. 도구측 1차 반영 = `④ drift-check ports.in profile-gated`, 본 절이 spec 정식 카테고리화.)
 
+**`@profile` 미지정 + `@ports.in` 보유** 시엔 semantics 를 결정할 수 없어 drift-check 가 **강검증을 보류하고 warn**(프로파일 명시 권장)해요 — false drift 회피. (2026-06-04 G8b — EG dry-run 에서 `@profile` 미지정 canonical .eux 11개(runtime 4 + UI 7) 발견.)
+
 ### `@machine` — 상태와 전이
 
 **무엇** — 이 모듈이 가질 수 있는 상태들(`states`)·상태를 바꾸는 사건(`dispatch`)·전이 조건(`guard`)·상태에서 파생되는 값(`derive`).

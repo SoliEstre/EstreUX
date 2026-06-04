@@ -60,15 +60,20 @@ function extractContractNames(raw) {
 
   // @ports: in(props) · cmd(command-in) · out(events-out) 이름 — 괄호/콜론 형태 무관 (G4: ports.in + `cmd x : ()` 콜론형 포함)
   //   ports.in 강검증은 props 주입형(ui-component/protocol-adapter)만 — backend/supervisor 의 in 은 입력 채널 개념(소켓·HTTP)이라 코드 식별자로 안 남음.
-  const profile = (raw.match(/^@profile\s+(.+)$/m) || [])[1]?.trim() || 'ui-component';
+  const profileRaw = (raw.match(/^@profile\s+(.+)$/m) || [])[1]?.trim();
+  const profile = profileRaw || 'ui-component';
   // G8: @ports 블록 내 명시 `semantics:` 우선 · 없으면 profile-implicit (ui/adapter=code-identifier 강검증 · backend/supervisor=input-channel 면제)
+  // G8b: @profile 미지정 + ports.in 보유 → semantics 미결정이라 강검증 보류(false drift 회피) + warn(명시 유도).
   const portsSem = buckets.ports.map(l => (l.match(/^\s*semantics\s*:\s*(code-identifier|input-channel)/) || [])[1]).find(Boolean) || null;
-  const strictIn = portsSem ? portsSem === 'code-identifier' : (profile === 'ui-component' || profile === 'protocol-adapter');
+  const strictIn = portsSem ? portsSem === 'code-identifier'
+    : !profileRaw ? false
+    : (profile === 'ui-component' || profile === 'protocol-adapter');
   const ports = new Set();
+  let hadPortsIn = false;
   for (const line of buckets.ports) {
     if (/^\s*semantics\s*:/.test(line)) continue;   // semantics 메타 라인(포트 선언 아님)
     const m = line.match(/^\s*(in|cmd|out)\s+(\w+)/);
-    if (m && !(m[1] === 'in' && !strictIn)) ports.add(m[2]);
+    if (m) { if (m[1] === 'in') hadPortsIn = true; if (!(m[1] === 'in' && !strictIn)) ports.add(m[2]); }
   }
   // mount 진입점
   const mount = buckets.behavior.some(l => /\bmount\b/.test(l)) || buckets.machine.some(l => /\bmount\b/.test(l));
@@ -96,7 +101,7 @@ function extractContractNames(raw) {
     });
   }
 
-  return { ports: [...ports], mount, machine: [...machine], vocab: [...vocab] };
+  return { ports: [...ports], mount, machine: [...machine], vocab: [...vocab], profileDeferred: !profileRaw && hadPortsIn };
 }
 
 // ── 메인 루프 ─────────────────────────────────────────────────────
@@ -133,6 +138,7 @@ for (const id of targets) {
   // Phase B: --contract 구조 계약 체크 (ports 강 · mount · machine 중)
   if (contractMode) {
     const c = extractContractNames(raw);
+    if (c.profileDeferred) console.warn(`    ⚠ @profile 미지정 + @ports.in 보유 — ports.in semantics 미결정으로 강검증 보류. @profile 명시 권장(G8b).`);
     const checks = [
       ...c.ports.map(n => ['ports', n]),
       ...(c.mount ? [['mount', 'mount']] : []),
