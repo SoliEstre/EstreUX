@@ -61,9 +61,12 @@ function extractContractNames(raw) {
   // @ports: in(props) · cmd(command-in) · out(events-out) 이름 — 괄호/콜론 형태 무관 (G4: ports.in + `cmd x : ()` 콜론형 포함)
   //   ports.in 강검증은 props 주입형(ui-component/protocol-adapter)만 — backend/supervisor 의 in 은 입력 채널 개념(소켓·HTTP)이라 코드 식별자로 안 남음.
   const profile = (raw.match(/^@profile\s+(.+)$/m) || [])[1]?.trim() || 'ui-component';
-  const strictIn = profile === 'ui-component' || profile === 'protocol-adapter';
+  // G8: @ports 블록 내 명시 `semantics:` 우선 · 없으면 profile-implicit (ui/adapter=code-identifier 강검증 · backend/supervisor=input-channel 면제)
+  const portsSem = buckets.ports.map(l => (l.match(/^\s*semantics\s*:\s*(code-identifier|input-channel)/) || [])[1]).find(Boolean) || null;
+  const strictIn = portsSem ? portsSem === 'code-identifier' : (profile === 'ui-component' || profile === 'protocol-adapter');
   const ports = new Set();
   for (const line of buckets.ports) {
+    if (/^\s*semantics\s*:/.test(line)) continue;   // semantics 메타 라인(포트 선언 아님)
     const m = line.match(/^\s*(in|cmd|out)\s+(\w+)/);
     if (m && !(m[1] === 'in' && !strictIn)) ports.add(m[2]);
   }

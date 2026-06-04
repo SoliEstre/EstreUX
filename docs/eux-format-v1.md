@@ -59,6 +59,22 @@ v0 의 8 디렉티브는 v1 에서도 동일하게 유효해요. (상세·예시
 ```
 → "이 모듈은 WS 프레임을 받아서, register/relay/close 명령을 처리하고, AgentList 와 Ack 를 내보낸다. ws-history 와 flap-dampening 에 기댄다" 를 한눈에.
 
+**`@ports.in` 의 semantics — `code-identifier` vs `input-channel`** (v1.1, drift-check 정합):
+
+`@ports.in` 은 프로파일에 따라 의미가 달라요:
+- **`code-identifier`** (ui-component·protocol-adapter): 호스트가 **정확한 이름·타입으로 주입하는 props**. 그 식별자가 산출 코드에 그대로 남아요(`wsUrl`·`role`). → `drift-check --contract` 가 산출물 **잔존 강검증**.
+- **`input-channel`** (backend-service·supervisor): 소켓·HTTP·큐 같은 **입력 채널 개념**. `wsFrame`·`httpReq` 처럼 "무엇을 받나"의 묘사라 코드 식별자로 안 남아요(런타임이 `ws.on`·`req` 로 처리). → drift-check **강검증 면제**(개념 표현이라 grep 무의미).
+
+**default = profile-implicit** — 프로파일이 위 매핑을 자동 결정해요. 프로파일 기본과 다르게 강제하려면 `@ports` 에 명시 한 줄:
+
+```
+@ports
+  semantics: code-identifier      # 이 모듈의 ports.in 을 profile 기본과 다르게 강검증(또는 input-channel 로 면제)
+  in   sessionId : string
+```
+
+`drift-check --contract` 는 **명시 `semantics:` 우선 · 없으면 profile-implicit** 으로 ports.in 잔존 검증을 분기해요. (2026-06-04 도그푸딩 G8 — `server.eux` ports.in(`wsFrame`/`httpReq`) false drift 해소에서 정식화. 도구측 1차 반영 = `④ drift-check ports.in profile-gated`, 본 절이 spec 정식 카테고리화.)
+
 ### `@machine` — 상태와 전이
 
 **무엇** — 이 모듈이 가질 수 있는 상태들(`states`)·상태를 바꾸는 사건(`dispatch`)·전이 조건(`guard`)·상태에서 파생되는 값(`derive`).
