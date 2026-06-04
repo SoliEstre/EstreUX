@@ -21,6 +21,7 @@ export async function expand(spec, target, ctx) {
   const profile = spec.profile || 'ui-component';
   const isUI = profile === 'ui-component';
   const isSupervisor = profile === 'supervisor';
+  const isCssAsset = profile === 'css-asset';   // css-asset v1.3 (RCSS — CSS 전략적-로딩 manifest)
 
   const st = spec.state.map(s => `//     ${s.name}: ${s.type} = ${s.default}${s.comment ? '   — ' + s.comment : ''}`).join('\n');
   const bh = spec.behavior.map(b => `//     ${b.name}(${b.args}): ${b.desc}`).join('\n');
@@ -34,6 +35,7 @@ export async function expand(spec, target, ctx) {
   const runtimeD = fmtDir('runtime'), rolesD = fmtDir('roles'), wireD = fmtDir('wire'), routingD = fmtDir('routing');
   const deliveryD = fmtDir('delivery'), redactionD = fmtDir('redaction'), opD = fmtDir('operation_discipline');
   const invD = fmtDir('invariants'), metaD = fmtDir('metamorphic');   // P3 v1.2 행동 계약(§2.6/§2.7)
+  const ownsD = fmtDir('owns'), triggerD = fmtDir('trigger'), loadD = fmtDir('load'), sizeD = fmtDir('size'), cssDepsD = fmtDir('css-deps'), tokensD = fmtDir('tokens');   // css-asset v1.3
   const p = spec.ports || { in: [], cmd: [], out: [], deps: [] };
   const pin = p.in.map(x => `//     ${x.name}: ${x.type}${x.comment ? '   — ' + x.comment : ''}`).join('\n');
   const pcmd = (p.cmd || []).map(x => `//     ${x.name}(${x.args})${x.desc ? ': ' + x.desc : ''}`).join('\n');
@@ -53,7 +55,7 @@ export async function expand(spec, target, ctx) {
     ` * │ intent    : ${spec.intent}`,
   ];
   if (srcD) L.push(' * │ source    (역증류 원본 — 이 코드의 출처, 참조·정합용):', srcD);
-  if (!isSupervisor) L.push(' * │ ports.in  (props 주입 — 호스트가 opts/초기값으로 전달, 정확한 키·타입 준수):', pin || '//     (none)');
+  if (!isSupervisor && !isCssAsset) L.push(' * │ ports.in  (props 주입 — 호스트가 opts/초기값으로 전달, 정확한 키·타입 준수):', pin || '//     (none)');
   L.push(' * │ ports.cmd (command-in — 호스트가 호출하는 갱신 메서드, 정확한 시그니처로 컨트롤러에 노출):', pcmd || '//     (none)');
   L.push(' * │ ports.out (events-out 콜백 — 호스트로 통지, 정확한 시그니처 준수):', pout || '//     (none)');
   L.push(' * │ ports.deps(주입 의존 — 내부 생성 금지, opts 로 주입받아 사용):', pdeps || '//     (none)');
@@ -75,6 +77,16 @@ export async function expand(spec, target, ctx) {
   if (invD) L.push(' * │ invariants(행동계약 — state/temporal/transaction, prose+키워드 보존하며 구현):', invD);
   if (metaD) L.push(' * │ metamorphic(변성성질 — round-trip/idempotency/determinism, P4 짝):', metaD);
   if (depsD) L.push(' * │ deps      (.eux 소스 의존 — 모듈 그래프, 참조용):', depsD);
+  if (isCssAsset) {
+    L.push(' * │ ── css-asset (CSS 전략적-로딩 manifest — 로더 brew, CSS 파일 referencing only) ──');
+    if (ownsD) L.push(' * │ owns      (소유 셀렉터 — 실 CSS 에 잔존, drift-check --css):', ownsD);
+    if (triggerD) L.push(' * │ trigger   (로드 트리거 — eager/handle-first-use:<sel>/page/feature/idle):', triggerD);
+    if (loadD) L.push(' * │ load      (로드 시점/방식):', loadD);
+    if (sizeD) L.push(' * │ size      (raw/gzip 예산):', sizeD);
+    if (cssDepsD) L.push(' * │ css-deps  (CSS-asset 그래프 — @deps(.eux 소스)와 별개):', cssDepsD);
+    if (tokensD) L.push(' * │ tokens    (:root var SSoT 브릿지):', tokensD);
+    L.push(' * │ brew: @trigger/@load/@css-deps → ensureStylesheet(handle) + manifest 소비 로더 생성. CSS 생성 금지(referencing only).');
+  }
   L.push(` * │ persist   : ${JSON.stringify(spec.persist)}`);
   L.push(` * │ targets   : ${spec.targets.join(', ')}`);
   L.push(' * └──────────────────────────────────────────────────────────────────');

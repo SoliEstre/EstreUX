@@ -28,11 +28,11 @@ const baseDir = dirname(resolve(euxPath));
 // ---- .eux 파서 (약한 구조 — @directive 섹션) ----
 function parseEux(text) {
   // v1/v1.1 자유텍스트 directive — §2(machine/source/deps) + §2.5 adapter contract 7종 + §2.6/§2.7 행동계약(invariants/metamorphic, P3 v1.2).
-  const FREETEXT_DIRECTIVES = new Set(['machine', 'source', 'deps', 'runtime', 'roles', 'wire', 'routing', 'delivery', 'redaction', 'operation_discipline', 'invariants', 'metamorphic']);
-  const spec = { component: '', profile: '', intent: '', expansion: {}, targets: [], state: [], behavior: [], render: '', styles: '', machine: '', source: '', deps: '', runtime: '', roles: '', wire: '', routing: '', delivery: '', redaction: '', operation_discipline: '', invariants: '', metamorphic: '', persist: {}, ports: { in: [], cmd: [], out: [], deps: [] } };
+  const FREETEXT_DIRECTIVES = new Set(['machine', 'source', 'deps', 'runtime', 'roles', 'wire', 'routing', 'delivery', 'redaction', 'operation_discipline', 'invariants', 'metamorphic', 'owns', 'trigger', 'load', 'size', 'css-deps', 'tokens']);   // +css-asset v1.3 디렉티브
+  const spec = { component: '', profile: '', intent: '', expansion: {}, targets: [], state: [], behavior: [], render: '', styles: '', machine: '', source: '', deps: '', runtime: '', roles: '', wire: '', routing: '', delivery: '', redaction: '', operation_discipline: '', invariants: '', metamorphic: '', owns: '', trigger: '', load: '', size: '', 'css-deps': '', tokens: '', persist: {}, ports: { in: [], cmd: [], out: [], deps: [] } };
   let section = null;
   for (const line of text.split(/\r?\n/)) {
-    const m = line.match(/^@(\w+)\s*(.*)$/);
+    const m = line.match(/^@([\w-]+)\s*(.*)$/);   // 하이픈 허용 (@css-deps 등 css-asset v1.3)
     if (m) {
       const [, key, rest] = m;
       if (key === 'component') spec.component = rest.trim();
@@ -41,7 +41,7 @@ function parseEux(text) {
       else if (key === 'expansion') rest.trim().split(/\s+/).forEach(kv => { const [k, v] = kv.split('='); spec.expansion[k] = v; });
       else if (key === 'targets') spec.targets = rest.replace(/\s*#.*$/, '').split(',').map(s => s.trim()).filter(Boolean);  // 인라인 # 주석 strip (콤마 포함 주석이 가짜 타깃으로 분리되는 것 방지)
       else if (key === 'persist') { rest.trim().split(/\s+/).forEach(kv => { const [k, v] = kv.split('='); spec.persist[k] = v; }); section = null; }
-      else section = key; // state / behavior / render
+      else { section = key; if (rest.trim() && FREETEXT_DIRECTIVES.has(key)) spec[key] = rest.trim(); }   // FREETEXT 한 줄 값(rest, @trigger/@load/@owns 등 css-asset) + 다음 줄 누적 겸용
       continue;
     }
     if (section === 'state') {
