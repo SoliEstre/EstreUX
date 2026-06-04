@@ -4,7 +4,7 @@
   "description": "EstreUX (Universal eXpression) — .eux 자연어 중간 소스 → 전 개발 영역(UI/backend/protocol/state machine/data) 코드로 brew. UI 한정 아님.",
   "type": "module",
   "bin": {
-    "estreux": "./bin/estreux.mjs"
+    "estreux": "bin/estreux.mjs"
   },
   "files": [
     "bin/",
