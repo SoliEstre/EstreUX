@@ -203,13 +203,14 @@ event-driven 운영 원칙 + anti-pattern 카탈로그.
 
 > **왜** — §2 의 `@ports`/`@machine` 은 *인터페이스*(뭘 받고 뭘 내보내나)를 적지만, 큰 모듈의 본질은 *행동 계약*("이 모듈은 어떤 불변식을 지키나")이에요. drift-check v1 은 시그니처 존재만 검증해 빈 스텁도 PASS 하는 ★G3(큰 모듈 본질 누락)가 남았어요. `@invariants` 는 그 행동 계약을 적어 **P4(property test)의 입력**이자 **P3(정적 게이트)의 대상**이 돼요. (EG readiness `93a972b` + 협의 Q1~Q2, 2026-06-04.)
 
-**무엇** — 이 모듈이 항상 지키는 불변식. 3 sub-section(클래스)로 묶어요:
+**무엇** — 이 모듈이 항상 지키는 불변식. 4 sub-section(클래스)로 묶어요:
 
 | 클래스 | 의미 | 권장 vocabulary 키워드 |
 |---|---|---|
 | **`state`** | 상태 자체의 불변(경계·순서·단조·소속) | `bounded` · `ordered` · `monotonic` · `member-of` |
 | **`temporal`** | 시간/순서(윈도우·만료·1회성·멱등) | `within` · `after` · `at-most-once` · `idempotent` · `expires-after` |
-| **`transaction`** | 원자성·롤백·인과 | `atomic` · `rollback-safe` · `dual-write` · `commit-then` · `persist-before` · (causality) `precedes` · `iff` · `implies` |
+| **`transaction`** | 원자성·롤백 | `atomic` · `rollback-safe` · `dual-write` · `commit-then` · `persist-before` |
+| **`causality`** | 인과·논리 관계 | `precedes` · `iff` · `implies` |
 
 **표기법** — 수학기호(∀·⪯·↔)가 아니라 **자유텍스트 prose + 권장 vocabulary 키워드**(협의 Q1=c). 7 directive(§2.5) FREETEXT 선례와 일관, 인코딩 toolchain(BOM/CRLF/LSP renderer) 깨짐 회피, adopter 의 LLM-assisted 작성에 자연스러워요. 핵심 키워드를 prose 에 넣어 정적 grep 가능하게 해요.
 
@@ -223,6 +224,9 @@ event-driven 운영 원칙 + anti-pattern 카탈로그.
     - dual-write atomic: mode B append 는 jsonl 과 sqlite 가 같이 성공하거나 같이 실패함
     - idempotent: backfillFromJsonl 은 1회/N회 실행 결과가 동일
     - persist-before: count_reconcile_gate(N=10) 통과 전 mode 전이 금지 (commit-then 순서)
+  causality:
+    - operator intent 가 auto-revert 에 precedes (운영자 변경이 자동 되돌림보다 우선)
+    - backfill 완료 iff count-reconcile 통과
 ```
 
 **cmd-local / transition-local 형식** — invariant 는 모듈 전역뿐 아니라 명령·전이 단위로도 적어요:
@@ -232,7 +236,7 @@ event-driven 운영 원칙 + anti-pattern 카탈로그.
 **정적 검증** (drift-check `--invariant`, P3c) — invariant 는 본질이 *행동*이라 정적 grep 으로 위반을 잡을 수 없어요(실제 위반 검출은 P4 dynamic). 정적 게이트는 3가지만(협의 Q2=a):
 1. `@invariants` 절 **존재** — P3 격상 대상 .eux 인지 게이트.
 2. vocabulary **키워드 잔존** — 산출물에 `atomic`/`idempotent`/`monotonic` 등 핵심 키워드 흔적(vocab 카테고리 선례).
-3. sub-section **일관성** — state/temporal/transaction 명시.
+3. sub-section **일관성** — state/temporal/transaction/causality 중 ≥1 명시.
 
 위반은 BlockerManifest(§13.20-shaped)로 surface. 정적 AST 부분검증은 over-engineering·false-positive 위험이라 비채택 — 본질 검증은 P4 로 위임(협의 Q2: (b) 비추천).
 

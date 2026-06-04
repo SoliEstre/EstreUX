@@ -172,7 +172,7 @@ for (const id of targets) {
     if (!invBlock.trim()) {
       console.log(`    invariant  (@invariants 없음 — P3 격상 대상 아님, skip)`);
     } else {
-      const subs = ['state', 'temporal', 'transaction'].filter(s => new RegExp(`^\\s*${s}\\s*:`, 'm').test(invBlock));
+      const subs = ['state', 'temporal', 'transaction', 'causality'].filter(s => new RegExp(`^\\s*${s}\\s*:`, 'm').test(invBlock));   // causality 별도 sub-section (1st cut dogfooding 정합)
       if (subs.length === 0) { console.log(`    invariant  ✗ sub-section 없음 (state/temporal/transaction ≥1 필요)`); drift++; }
       else console.log(`    invariant  ✓ sub-section: ${subs.join('·')}`);
       const VOCAB = ['bounded', 'ordered', 'monotonic', 'member-of', 'within', 'after', 'at-most-once', 'idempotent', 'expires-after', 'atomic', 'rollback-safe', 'dual-write', 'commit-then', 'persist-before', 'precedes', 'iff', 'implies'];
