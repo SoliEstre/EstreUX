@@ -58,22 +58,29 @@ function extractContractNames(raw) {
     if (section) buckets[section].push(line);
   }
 
-  // @ports: cmd NAME( / out NAME(
+  // @ports: in(props) · cmd(command-in) · out(events-out) 이름 — 괄호/콜론 형태 무관 (G4: ports.in + `cmd x : ()` 콜론형 포함)
+  //   ports.in 강검증은 props 주입형(ui-component/protocol-adapter)만 — backend/supervisor 의 in 은 입력 채널 개념(소켓·HTTP)이라 코드 식별자로 안 남음.
+  const profile = (raw.match(/^@profile\s+(.+)$/m) || [])[1]?.trim() || 'ui-component';
+  const strictIn = profile === 'ui-component' || profile === 'protocol-adapter';
   const ports = new Set();
   for (const line of buckets.ports) {
-    const c = line.match(/^\s*cmd\s+(\w+)\s*\(/);   if (c) ports.add(c[1]);
-    const o = line.match(/^\s*out\s+(\w+)\s*\(/);   if (o) ports.add(o[1]);
+    const m = line.match(/^\s*(in|cmd|out)\s+(\w+)/);
+    if (m && !(m[1] === 'in' && !strictIn)) ports.add(m[2]);
   }
   // mount 진입점
   const mount = buckets.behavior.some(l => /\bmount\b/.test(l)) || buckets.machine.some(l => /\bmount\b/.test(l));
-  // @machine: states: A · B · C  +  dispatch NAME (ports 에 이미 있으면 중복 제외)
+  // @machine (G2): (a) 인라인 `states: A · B · C` (b) 멀티라인 YAML `states:`→들여쓰기 `STATE:` (c) arrow `event → TARGET` (d) dispatch NAME
   const machine = new Set();
+  let inStates = false;
   for (const line of buckets.machine) {
-    const st = line.match(/^\s*states\s*:\s*(.+)$/);
-    if (st) st[1].split(/[·,]/).forEach(s => { const m = s.match(/[A-Za-z_]\w*/); if (m) machine.add(m[0]); });
-    const dp = line.match(/^\s*dispatch[:\s]\s*(\w+)/);   // "dispatch feed" · "dispatch: tick" 양형
-    if (dp && !ports.has(dp[1])) machine.add(dp[1]);
+    const stInline = line.match(/^\s*states\s*:\s*(\S.*)$/);
+    if (stInline) { stInline[1].split(/[·,]/).forEach(s => { const m = s.match(/[A-Za-z_]\w*/); if (m) machine.add(m[0]); }); inStates = false; continue; }
+    if (/^\s*states\s*:\s*$/.test(line)) { inStates = true; continue; }                    // 멀티라인 YAML states 블록 진입
+    if (inStates) { const sm = line.match(/^\s+([A-Z][A-Z0-9_]*)\s*:\s*$/); if (sm) machine.add(sm[1]); }   // 들여쓰기 STATENAME:
+    const ar = line.match(/→\s*([A-Z][A-Za-z0-9_]*)/);   if (ar) machine.add(ar[1]);        // arrow transition target
+    const dp = line.match(/^\s*dispatch[:\s]\s*(\w+)/);   if (dp && !/:\s*$/.test(line)) machine.add(dp[1]);   // "dispatch feed"·"dispatch: tick" — 콜론끝 헤더("dispatch by event:") 제외
   }
+  for (const n of [...machine]) if (ports.has(n)) machine.delete(n);   // ports 와 중복 제외
   // 7 directive (adapter contract): 대괄호 리스트의 대문자-시작 프로토콜 심볼만 추출.
   //   [DONE, BLOCKED, AckProcessed] · [DeadlockProbe, …] · applies_to:[Delegate, …]
   //   소문자 envelope 필드(type/id/runId)·산문 대문자(Constellation/MCP)는 제외 → false-match 안전.
