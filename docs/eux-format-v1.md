@@ -131,14 +131,17 @@ canonical roles + **role_truth doctrine**(server 분류 AgentList = 진실, `Age
   canonical: board · main · local · upstream · collab
   role_truth: server AgentList authoritative; AgentHello.role = hint only
   onboard_ack: local→Delegate 대기 · upstream/collab→informational welcome + autonomous peer
+  url_patterns: local_dev ws://host/ws · token_gated ?token= · upstream ?upstreamKey=<uk-…> · collab ?key=<ck-…>
+  forbidden: generic key for upstream · client-side idle heartbeat as agent activity
 ```
+> `url_patterns`/`forbidden` 은 EG gateway-client `connection_params.url_rules` 를 흡수해요 — role 별 URL 형식이 role contract 의 일부라 `@roles` 안에 두는 게 자연스러워요(별도 `@connection` directive 증식 회피, 2026-06-04 EG review 옵션 a).
 
 ### `@wire` — 와이어 규약 (C8 정식화)
 envelope convention(CUSTOM-wrapped vs bare top-level) + ack tier 시맨틱(delivered/processed/decided). EG canonical `wire:` 섹션과 1:1 → `drift-check --wire` 로 산출 codec ↔ wire SSoT 검증.
 ```
 @wire
   envelope: CUSTOM-wrapped {type:CUSTOM, name, value} | bare top-level {type, ...}
-  ack_tier: delivered (transport) · processed (agent WILCO) · decided (자율결정 후 통지)
+  ack_tier: delivered (transport) · processed (agent WILCO) · decided (user-decided gate cleared per Hyperbrief §11.1 — DECISION_RESPONSE/DECISION_DEFER/DECISION_REJECT_FRAMING 발화 시 resolve)
 ```
 
 ### `@routing` — 라우팅 분류
