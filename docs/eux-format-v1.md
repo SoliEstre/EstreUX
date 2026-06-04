@@ -199,6 +199,66 @@ event-driven 운영 원칙 + anti-pattern 카탈로그.
 
 ---
 
+## 2.6 행동 계약 디렉티브 — `@invariants` (v1.2, P3)
+
+> **왜** — §2 의 `@ports`/`@machine` 은 *인터페이스*(뭘 받고 뭘 내보내나)를 적지만, 큰 모듈의 본질은 *행동 계약*("이 모듈은 어떤 불변식을 지키나")이에요. drift-check v1 은 시그니처 존재만 검증해 빈 스텁도 PASS 하는 ★G3(큰 모듈 본질 누락)가 남았어요. `@invariants` 는 그 행동 계약을 적어 **P4(property test)의 입력**이자 **P3(정적 게이트)의 대상**이 돼요. (EG readiness `93a972b` + 협의 Q1~Q2, 2026-06-04.)
+
+**무엇** — 이 모듈이 항상 지키는 불변식. 3 sub-section(클래스)로 묶어요:
+
+| 클래스 | 의미 | 권장 vocabulary 키워드 |
+|---|---|---|
+| **`state`** | 상태 자체의 불변(경계·순서·단조·소속) | `bounded` · `ordered` · `monotonic` · `member-of` |
+| **`temporal`** | 시간/순서(윈도우·만료·1회성·멱등) | `within` · `after` · `at-most-once` · `idempotent` · `expires-after` |
+| **`transaction`** | 원자성·롤백·인과 | `atomic` · `rollback-safe` · `dual-write` · `commit-then` · `persist-before` · (causality) `precedes` · `iff` · `implies` |
+
+**표기법** — 수학기호(∀·⪯·↔)가 아니라 **자유텍스트 prose + 권장 vocabulary 키워드**(협의 Q1=c). 7 directive(§2.5) FREETEXT 선례와 일관, 인코딩 toolchain(BOM/CRLF/LSP renderer) 깨짐 회피, adopter 의 LLM-assisted 작성에 자연스러워요. 핵심 키워드를 prose 에 넣어 정적 grep 가능하게 해요.
+
+**예시** (history-store — EG readiness lift):
+```
+@invariants
+  state:
+    - bounded: 채널별 링 버퍼는 HIST_CAP 을 넘지 않음 (|wsHistByChan[k]| ≤ HIST_CAP)
+    - monotonic: 저장 타임스탬프는 emit 시점을 보존, replay 로 덮어쓰지 않음
+  transaction:
+    - dual-write atomic: mode B append 는 jsonl 과 sqlite 가 같이 성공하거나 같이 실패함
+    - idempotent: backfillFromJsonl 은 1회/N회 실행 결과가 동일
+    - persist-before: count_reconcile_gate(N=10) 통과 전 mode 전이 금지 (commit-then 순서)
+```
+
+**cmd-local / transition-local 형식** — invariant 는 모듈 전역뿐 아니라 명령·전이 단위로도 적어요:
+- `@ports.cmd` 의 **`pre`/`post`** — `append(ev): pre: currentMode member-of {A,B,C}` · `post: query() 가 ev 포함 (ev ∉ skip_set 일 때)`.
+- `@machine` 의 **`guard`/`entry-post`** — 기존 `entry:`/`on:` 위에 `guard: <pre-condition>` + `entry-post: <post-condition>`. (`@machine HistoryStoreMode` 의 `guard:` 선례 일반화.)
+
+**정적 검증** (drift-check `--invariant`, P3c) — invariant 는 본질이 *행동*이라 정적 grep 으로 위반을 잡을 수 없어요(실제 위반 검출은 P4 dynamic). 정적 게이트는 3가지만(협의 Q2=a):
+1. `@invariants` 절 **존재** — P3 격상 대상 .eux 인지 게이트.
+2. vocabulary **키워드 잔존** — 산출물에 `atomic`/`idempotent`/`monotonic` 등 핵심 키워드 흔적(vocab 카테고리 선례).
+3. sub-section **일관성** — state/temporal/transaction 명시.
+
+위반은 BlockerManifest(§13.20-shaped)로 surface. 정적 AST 부분검증은 over-engineering·false-positive 위험이라 비채택 — 본질 검증은 P4 로 위임(협의 Q2: (b) 비추천).
+
+## 2.7 변성 성질 디렉티브 — `@metamorphic` (v1.2, P4 짝)
+
+> **왜** — 어떤 성질은 단일 입출력이 아니라 *입력 변환 ↔ 출력 변환 관계*로만 검증돼요(라운드트립·멱등·결정성). `@metamorphic` 은 그런 성질을 적어 **P4 property test**(fast-check 류)의 자동 입력이 돼요. `@invariants` 와 짝 — 불변식 = 항상 참 / 변성성질 = 변환 관계.
+
+**무엇** — equivalent-input → equivalent-output 관계. 3 패턴:
+- **round-trip** — `f(g(x)) == x` (export→import · encode→decode)
+- **idempotency** — `f(f(x)) == f(x)` (재실행 안전)
+- **determinism** — 같은 입력 → 같은 출력 (probe once-per-process)
+
+**예시** (history-store):
+```
+@metamorphic
+  - round_trip: exportJsonl → JSONL → mode-B 재진입 → exportJsonl 이 byte-identical
+  - idempotency: backfillFromJsonl 1회 == N회 (resume-safe)
+  - determinism: probeRefusal 은 프로세스당 1회 평가 (startup gate)
+```
+
+**P3 단계** — 절 형식만 정의(parseEux 파싱). **실행은 P4** — `@metamorphic` 절에서 property 를 자동 추출해 경량 framework(fast-check 류)로 검증. P4 1st 최적 = history-store(mode chain + byte-identity + backfill idempotency 3 성질).
+
+> **`@hazards` 3-class (Q3, 별도 트랙)** — orchestration-state class 추가 합의(credential·integrity 외): 식별자 누설·wait/escalation state 누설·anonymous probe 흔적·handoff race window. 구체 list 는 P3a 1st cut(server-relay) drafting 시 협의. `@hazards` 절 정식화는 C8 트랙(§6)과 함께.
+
+---
+
 ## 3. 컴포넌트 프로파일 — "이 모듈은 어떤 종류인가"
 
 > **왜 프로파일이 필요한가** — v0 는 모든 모듈을 UI 로 가정해서, 백엔드 모듈도 `@render N/A (headless)` 같은 빈 선언을 강제로 달았어요. "이 모듈은 UI 가 아니다"라고 한 번 선언하면, 그런 빈 선언이 사라지고·각 종류에 맞는 디렉티브만 쓰게 돼요.
