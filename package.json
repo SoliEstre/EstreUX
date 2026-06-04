@@ -1,6 +1,6 @@
 {
   "name": "estreux",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "EstreUX (Universal eXpression) — .eux 자연어 중간 소스 → 전 개발 영역(UI/backend/protocol/state machine/data) 코드로 brew. UI 한정 아님.",
   "type": "module",
   "bin": {
@@ -20,7 +20,17 @@
     "type": "git",
     "url": "git+https://github.com/SoliEstre/EstreUX.git"
   },
-  "keywords": ["eux", "estre", "estreui", "estreuv", "codegen", "brew", "scaffolding", "llm", "ai-native"],
+  "keywords": [
+    "eux",
+    "estre",
+    "estreui",
+    "estreuv",
+    "codegen",
+    "brew",
+    "scaffolding",
+    "llm",
+    "ai-native"
+  ],
   "scripts": {
     "brew": "node spike/expand.mjs spike/notif-toggle.eux",
     "expand": "node spike/expand.mjs spike/notif-toggle.eux",
@@ -32,6 +42,6 @@
   "author": "SoliEstre",
   "license": "Apache-2.0",
   "devDependencies": {
-    "fast-check": "^3.23.0"
+    "fast-check": "^3.23.2"
   }
 }

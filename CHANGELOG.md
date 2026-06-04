@@ -2,6 +2,29 @@
 
 > EstreUX(`.eux` Universal eXpression) 변경 이력. 형식은 [Keep a Changelog](https://keepachangelog.com) 약식.
 
+## 0.3.0 (2026-06-04)
+
+`.eux` 를 **행동 계약 검증**(P3 정적 + P4 dynamic)까지 확장한 minor — Constellation brew dogfooding(EG 협업) 산출.
+
+### Added
+- **eux-format v1.1** — adapter contract 7 directive(`@runtime`/`@roles`/`@wire`/`@routing`/`@delivery`/`@redaction`/`@operation_discipline`) + `@ports.in` semantics(`code-identifier`|`input-channel`, profile-implicit default + 명시 `semantics:` override).
+- **eux-format v1.2** — 행동 계약 디렉티브:
+  - `@invariants` (state/temporal/transaction/causality 4 sub-section + 권장 vocabulary `bounded`/`atomic`/`idempotent`/`monotonic`/`precedes` 등) — P3 정적 게이트 대상.
+  - `@metamorphic` (round_trip/idempotency/determinism sub-section) — P4 property test 입력.
+  - `@ports.cmd` pre/post · `@ports.out` post · `@machine` guard/entry-post.
+- **`spike/p4-check.mjs`** (신규) — `@metamorphic` 절 → fast-check property 실행(P4 dynamic). `drift-check`(정적 @invariants) ↔ `p4-check`(dynamic @metamorphic) 대칭. `fast-check` dev-dependency(런타임 deps-0 유지).
+- **`drift-check --invariant`** — 행동 계약 정적 게이트 3종(절 존재 · sub-section 일관성 · vocabulary 키워드 잔존; 위반=BlockerManifest-shaped). 정적 한계 명시(실제 위반 검출은 P4 dynamic).
+- **`drift-check --contract` 확장** — vocab 카테고리(7 directive 프로토콜 심볼 잔존) · `@machine` 멀티라인 YAML states + arrow transition(G2) · `@ports` in/cmd/out 통합 + ports.in profile-gated(G4/G8) + `@profile` 미지정 보류 warn(G8b).
+
+### Changed
+- `@agent-brew` stub — 7 directive · `@invariants`/`@metamorphic` 표시 + events-out/cmd 호출 marker(G7, `@ports.out.post` anchor).
+- `parseEux` — 7 directive · `@invariants`/`@metamorphic` FREETEXT 파싱 + `@ports` out/cmd desc-optional(시그니처-only) + 인라인 주석 strip.
+
+### Notes
+- Constellation 2.0 brew dogfooding(EG 협업, EG v2.5.45~49) 산출 — 1-tier 5개 canonical `.eux`(history-store/server-relay/server-keys/server-core/server-history) `@invariants` 격상 + history-store `@metamorphic` fast-check 검증(100 runs × 3 property PASS).
+- dogfooding 수확(도구 ↔ 실사용 feedback loop): causality 4번째 sub-section · `@metamorphic` sub-section 구조 · ports.in profile semantics — EG 실사용이 spec 을 정합·성숙시킨 사례 3회.
+- 잔여(후속 cycle): full reference impl(history-store.cjs Mode B/C) · P4 server-relay 등 확장 · 3rd cut(local-bridge).
+
 ## 0.2.0 (2026-06-01)
 
 `.eux` 규격을 **Universal eXpression**(전 개발 영역) 으로 정식 확장한 첫 minor.
