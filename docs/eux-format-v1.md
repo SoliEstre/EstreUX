@@ -253,10 +253,15 @@ event-driven 운영 원칙 + anti-pattern 카탈로그.
 **예시** (history-store):
 ```
 @metamorphic
-  - round_trip: exportJsonl → JSONL → mode-B 재진입 → exportJsonl 이 byte-identical
-  - idempotency: backfillFromJsonl 1회 == N회 (resume-safe)
-  - determinism: probeRefusal 은 프로세스당 1회 평가 (startup gate)
+  round_trip:
+    - exportJsonl → JSONL → mode-B 재진입 → exportJsonl 이 byte-identical
+  idempotency:
+    - backfillFromJsonl 1회 == N회 (resume-safe)
+  determinism:
+    - probeRefusal 은 프로세스당 1회 평가 (startup gate)
 ```
+
+`@metamorphic` 도 `@invariants` 와 동형으로 **sub-section(round_trip/idempotency/determinism)** 구조예요(1st cut dogfooding 정합). p4-check 는 sub-section 과 flat(`- kind: desc`) 양쪽을 파싱해요.
 
 **P3 단계** — 절 형식만 정의(parseEux 파싱). **실행은 P4** — `@metamorphic` 절에서 property 를 자동 추출해 경량 framework(fast-check 류)로 검증. P4 1st 최적 = history-store(mode chain + byte-identity + backfill idempotency 3 성질).
 
