@@ -29,10 +29,14 @@ export async function expand(spec, target, ctx) {
   const md = (spec.machine || '').split('\n').filter(Boolean).map(l => '//     ' + l).join('\n');
   const srcD = (spec.source || '').split('\n').filter(Boolean).map(l => '//     ' + l).join('\n');
   const depsD = (spec.deps || '').split('\n').filter(Boolean).map(l => '//     ' + l).join('\n');
+  // v1.1 §2.5 adapter contract 7종 (protocol-adapter/backend-service 가 주 사용 — 값 있을 때만 표시)
+  const fmtDir = (k) => (spec[k] || '').split('\n').filter(Boolean).map(l => '//     ' + l).join('\n');
+  const runtimeD = fmtDir('runtime'), rolesD = fmtDir('roles'), wireD = fmtDir('wire'), routingD = fmtDir('routing');
+  const deliveryD = fmtDir('delivery'), redactionD = fmtDir('redaction'), opD = fmtDir('operation_discipline');
   const p = spec.ports || { in: [], cmd: [], out: [], deps: [] };
   const pin = p.in.map(x => `//     ${x.name}: ${x.type}${x.comment ? '   — ' + x.comment : ''}`).join('\n');
-  const pcmd = (p.cmd || []).map(x => `//     ${x.name}(${x.args}): ${x.desc}`).join('\n');
-  const pout = p.out.map(x => `//     ${x.name}(${x.args}): ${x.desc}`).join('\n');
+  const pcmd = (p.cmd || []).map(x => `//     ${x.name}(${x.args})${x.desc ? ': ' + x.desc : ''}`).join('\n');
+  const pout = p.out.map(x => `//     ${x.name}(${x.args})${x.desc ? ': ' + x.desc : ''}`).join('\n');
   const pdeps = p.deps.map(x => `//     ${x.name}: ${x.type}${x.comment ? '   — ' + x.comment : ''}`).join('\n');
   const model = (ctx && ctx.modelName) || 'agent';
 
@@ -59,6 +63,14 @@ export async function expand(spec, target, ctx) {
     L.push(' * │ styles    (디자인 토큰·셀렉터 스타일 — 결정적 CSS 로 emit, 1회 주입):', sd || '//     (none)');
   }
   L.push(' * │ machine   (파생데이터/상태머신 — reducer dispatch·상태전이·파생필드, 명세대로 구현):', md || '//     (none)');
+  // v1.1 §2.5 adapter contract — 격리 어댑터/서비스의 와이어·라우팅·전달·역할·운영 계약. 정확히 준수.
+  if (runtimeD) L.push(' * │ runtime   (런타임 계약 — engine/concurrency/keepAlive/poll/forbidden):', runtimeD);
+  if (rolesD) L.push(' * │ roles     (역할 계약 — canonical/role_truth/url_patterns/onboard_ack/forbidden):', rolesD);
+  if (wireD) L.push(' * │ wire      (와이어 계약 — envelope/ack_tier/handshake, 시그니처·필드 정확히):', wireD);
+  if (routingD) L.push(' * │ routing   (라우팅 계약 — groups/telemetry_exclude/priority/gate):', routingD);
+  if (deliveryD) L.push(' * │ delivery  (전달 계약 — semantics/msgId/liveness/termination/deadlock vocab):', deliveryD);
+  if (redactionD) L.push(' * │ redaction (편집 계약 — hook/targets/authority, 로그·발신 양 경로):', redactionD);
+  if (opD) L.push(' * │ operation (운영 규율 — principle/upstream_peer/wait_state/anti_patterns):', opD);
   if (depsD) L.push(' * │ deps      (.eux 소스 의존 — 모듈 그래프, 참조용):', depsD);
   L.push(` * │ persist   : ${JSON.stringify(spec.persist)}`);
   L.push(` * │ targets   : ${spec.targets.join(', ')}`);

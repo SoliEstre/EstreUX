@@ -9,6 +9,7 @@
  *   ports   : @ports cmd/out 함수명 — 호스트 인터페이스(강, 반드시).
  *   mount   : 진입점.
  *   machine : @machine states/dispatch — 상태머신(중).
+ *   vocab   : v1.1 §2.5 adapter contract 7종의 대괄호 vocabulary(대문자 프로토콜 심볼) — 어휘 잔존(중).
  *   @state 필드 정합은 일반 식별자 false-match 위험으로 P3(AST) 영역 — 얇은 게이트 제외.
  *   provider=agent: sha staleness 는 warn 만 (exit 0 유지), 계약 체크는 수행.
  *   provider=template 등: sha staleness 도 drift (exit 1).
@@ -44,12 +45,15 @@ function extractProvider(head) {
 //   @state 필드는 일반 식별자 false-match 위험으로 제외 (P3 AST 영역).
 function extractContractNames(raw) {
   const lines = raw.split('\n');
-  const buckets = { ports: [], behavior: [], machine: [] };
+  const ADAPTER = new Set(['runtime', 'roles', 'wire', 'routing', 'delivery', 'redaction', 'operation_discipline']);
+  const buckets = { ports: [], behavior: [], machine: [], contract: [] };
   let section = null;
   for (const line of lines) {
     if (/^@ports\b/.test(line))    { section = 'ports'; continue; }
     if (/^@machine\b/.test(line))  { section = 'machine'; continue; }
     if (/^@behavior\b/.test(line)) { section = 'behavior'; continue; }
+    const dm = line.match(/^@(\w+)\b/);
+    if (dm && ADAPTER.has(dm[1]))  { section = 'contract'; continue; }   // v1.1 §2.5 adapter contract 7종
     if (/^@/.test(line))           { section = null; continue; }
     if (section) buckets[section].push(line);
   }
@@ -70,8 +74,19 @@ function extractContractNames(raw) {
     const dp = line.match(/^\s*dispatch[:\s]\s*(\w+)/);   // "dispatch feed" · "dispatch: tick" 양형
     if (dp && !ports.has(dp[1])) machine.add(dp[1]);
   }
+  // 7 directive (adapter contract): 대괄호 리스트의 대문자-시작 프로토콜 심볼만 추출.
+  //   [DONE, BLOCKED, AckProcessed] · [DeadlockProbe, …] · applies_to:[Delegate, …]
+  //   소문자 envelope 필드(type/id/runId)·산문 대문자(Constellation/MCP)는 제외 → false-match 안전.
+  const vocab = new Set();
+  for (const line of buckets.contract) {
+    const arr = line.match(/\[([^\]]+)\]/);
+    if (!arr) continue;
+    arr[1].split(',').map(s => s.trim()).forEach(s => {
+      if (/^[A-Z][A-Za-z0-9_]{2,}$/.test(s) && !ports.has(s) && !machine.has(s)) vocab.add(s);
+    });
+  }
 
-  return { ports: [...ports], mount, machine: [...machine] };
+  return { ports: [...ports], mount, machine: [...machine], vocab: [...vocab] };
 }
 
 // ── 메인 루프 ─────────────────────────────────────────────────────
@@ -112,6 +127,7 @@ for (const id of targets) {
       ...c.ports.map(n => ['ports', n]),
       ...(c.mount ? [['mount', 'mount']] : []),
       ...c.machine.map(n => ['machine', n]),
+      ...c.vocab.map(n => ['vocab', n]),
     ];
     if (checks.length === 0) {
       console.log(`    contract  (계약 이름 없음 — skip)`);

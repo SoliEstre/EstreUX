@@ -69,8 +69,9 @@ function parseEux(text) {
       if (dm) {
         const dir = dm[1], body = dm[2];
         if (dir === 'out' || dir === 'cmd') {
-          const om = body.match(/^(\w+)(\([^)]*\))?\s*:\s*(.+)$/);
-          if (om) spec.ports[dir].push({ name: om[1], args: (om[2] || '()').replace(/[()]/g, ''), desc: om[3].trim() });
+          // desc 선택 (시그니처-only `out NAME(args)` 허용) + 인라인 # 주석 strip — EG a2a.eux events-out 형태 정합 (2026-06-04 drift-check 발견)
+          const om = body.replace(/\s*#.*$/, '').match(/^(\w+)(\([^)]*\))?\s*(?::\s*(.+))?$/);
+          if (om) spec.ports[dir].push({ name: om[1], args: (om[2] || '()').replace(/[()]/g, ''), desc: (om[3] || '').trim() });
         } else {
           const im = body.match(/^(\w+)\s*:\s*([^#]+?)\s*(?:#\s*(.*))?$/);
           if (im) spec.ports[dir].push({ name: im[1], type: im[2].trim(), comment: (im[3] || '').trim() });
