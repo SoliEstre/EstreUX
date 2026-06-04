@@ -14,7 +14,8 @@
     "spike/providers/",
     "spike/notif-toggle.eux",
     "docs/",
-    "BREW.md"
+    "BREW.md",
+    "NOTICE"
   ],
   "repository": {
     "type": "git",

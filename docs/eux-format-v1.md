@@ -377,5 +377,4 @@ v0 와 동일해요:
 
 ## 참조
 - [eux-format-v0](eux-format-v0.md) — 현행 기반(8 디렉티브·결정성·drift)
-- [concept-seed §10](../../EstreUF%20common%20workspace/drafts/2026-05-09-estreux-concept-seed.md) — Universal eXpression 재정의
-- 허브 RRP `reports/2026-05-31-eux-spec-universal-expansion.md` — 본 v1 정식화의 근거(Research·Plan P1~P3)
+- Universal eXpression 재정의(2026-05-30) 및 v1 정식화 근거(Research → Report → Plan)는 비공개 조율 워크스페이스의 concept-seed·RRP 리포트 기반.

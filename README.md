@@ -9,8 +9,8 @@
 **Scope**: UI(EstreUI)·View(EstreUV) 에 **한정하지 않는다** — `.eux` 증류는 backend·protocol·state machine·data layer 등 **전 개발 영역**에 적용 가능(2026-05-30 A/B 도그푸딩 검증: 결제 백엔드·VAN POS·인증 머신 증류, 환각 0·93% 충실). *Universal eXpression* = 범용 코드 ↔ spec 증류 표현. (현 Phase A 구현 타깃은 EstreUI/EstreUV.)
 
 > **상태: Phase A — thin spike** (2026-05-22~). 메커니즘·구조·도구 계약을 격리 검증 중.
+> **v0.3.0**: `.eux` 포맷을 **전 개발 영역**으로 확장(v1 비-UI 디렉티브 + v1.1 adapter contract 7종 + v1.2 행동 계약 `@invariants`/`@metamorphic`) + **정적·동적 행동 계약 검증**(`drift-check --invariant` 정적 · `p4-check` fast-check 동적) 추가.
 > 풀 MVP(다중 채널·reverse sync·Estrim 통합)는 EstreUV 1.0 GA + usage data 후(Phase B).
-> 기획·근거: 허브 워크스페이스(비공개 조율)의 PM 009 / Rule 7 리포트.
 
 ## Phase A spike 실행
 
@@ -25,9 +25,9 @@ node bin/estreux.mjs drift <file.eux>    # .eux ↔ 산출물 검사
 ```
 
 - 합성 예제: [`spike/notif-toggle.eux`](spike/notif-toggle.eux) (알림 토글 위젯)
-- 플래그십 예제: [`examples/`](examples/) (끝말잇기 스토리 — 1 spec → 3 변종 인터랙티브 데모, brew provider=`agent`)
-- `.eux` 포맷: [`docs/eux-format-v0.md`](docs/eux-format-v0.md)
-- spike 결과: [`spike/SPIKE.md`](spike/SPIKE.md)
+- 플래그십 예제·spike 결과: [GitHub 저장소](https://github.com/SoliEstre/EstreUX) (`examples/` 끝말잇기 1 spec → 3 변종 데모 · `spike/SPIKE.md` — npm 배포본엔 미포함, 저장소 참조)
+- `.eux` 포맷: [v0](docs/eux-format-v0.md)(8 디렉티브) · [v1](docs/eux-format-v1.md)(비-UI 디렉티브 + adapter contract 7종 + 행동 계약 `@invariants`/`@metamorphic`)
+- 검증: `drift-check --contract`(인터페이스 정적) · `--invariant`(행동 계약 정적) · `p4-check`(`@metamorphic` 동적, fast-check) — brew(생성) ↔ 검증 대칭
 - brew provider (2026-05-23 확정): **기본 = 호스트 에이전트/서브에이전트** (에이전트 IDE 안에서 별도 키 없이 brew, γ 타깃 병렬 위임 — 실구현 Phase B) · **부가 = API/OAuth** (로컬 Ollama·vLLM·LM Studio · BYOK, 헤드리스·CI용) · **lock = `template`** (결정적 PoC, 현 Phase A 사용). [`spike/providers/`](spike/providers/), trio `model` prefix 로 선택.
 - drift 훅: `git config core.hooksPath .githooks` (또는 `npm install` 시 `prepare` 가 자동 설정). 커밋 전 `.eux`↔산출물 drift 를 차단.
 
@@ -37,7 +37,7 @@ EstreUX 는 **deps-0 brew 엔진**(소스 ~21KB)이라 다운스트림(시드 �
 
 - **npm 발행 전 (현재) — `giget` 경량 fetch** (brew 엔진만, tarball·`.git` 없음·캐시):
   ```bash
-  npx giget gh:SoliEstre/EstreUX/spike#v0.1.0 ./estreux-engine
+  npx giget gh:SoliEstre/EstreUX/spike#v0.3.0 ./estreux-engine
   node ./estreux-engine/expand.mjs brew <file.eux>
   ```
 - **npm 발행 후**:
@@ -59,5 +59,5 @@ BYOK(Claude·GPT 등)와 로컬 서버(Ollama·vLLM·LM Studio 등)를 수평 �
 
 **Apache License 2.0** (Copyright 2026 SoliEstre (Estre Soliette) — [LICENSE](LICENSE) · [NOTICE](NOTICE)).
 표준 지향 메타-레이어라 **특허 grant** 포함된 Apache 2.0 채택 (런타임 라이브러리 EstreUI/EstreUV 는
-MIT — 레이어별 라이선스, 상호 호환). **npm 발행 준비 완료** (2026-05-28, v0.1.0) — `files` 화이트리스트로
-brew 엔진만 배포(13파일·~21KB), 내부 자산(examples/dist·adoption·hooks) 제외. `npm publish` 실행은 메인테이너 게이트.
+MIT — 레이어별 라이선스, 상호 호환). **npm 발행** (v0.3.0) — `files` 화이트리스트로 brew 엔진 + 검증 도구만
+배포(~15파일·~40KB), 내부 자산(examples/dist·adoption·hooks·비공개 조율 문서) 제외.
