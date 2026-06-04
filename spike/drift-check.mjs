@@ -22,8 +22,9 @@ import { dirname, resolve } from 'node:path';
 
 const args = process.argv.slice(2);
 const contractMode = args.includes('--contract');
+const invariantMode = args.includes('--invariant');   // Phase C: 행동 계약(@invariants) 정적 게이트 (P3c)
 const euxPath = args.find(a => !a.startsWith('-'));
-if (!euxPath) { console.error('usage: drift-check.mjs [--contract] <file.eux>'); process.exit(2); }
+if (!euxPath) { console.error('usage: drift-check.mjs [--contract] [--invariant] <file.eux>'); process.exit(2); }
 
 const raw = readFileSync(euxPath, 'utf8');
 const sha = createHash('sha256').update(raw).digest('hex').slice(0, 12);
@@ -155,6 +156,32 @@ for (const id of targets) {
           console.log(`    contract  ✗ ${cat.padEnd(7)} ${name} — 결과물에 없음`);
           drift++;
         }
+      }
+    }
+  }
+
+  // Phase C: --invariant 행동 계약 정적 게이트 (P3c) — EG 협의 Q2: 절 존재 + sub-section 일관성 + vocabulary 키워드 잔존.
+  //   invariant 는 본질이 행동이라 정적 grep 으로 위반은 못 잡음(P4 dynamic). 정적은 "본질 누락" 만 검출.
+  if (invariantMode) {
+    let inInv = false, invBlock = '';
+    for (const l of raw.split('\n')) {
+      if (/^@invariants\b/.test(l)) { inInv = true; continue; }
+      if (/^@/.test(l)) { inInv = false; continue; }
+      if (inInv) invBlock += l + '\n';
+    }
+    if (!invBlock.trim()) {
+      console.log(`    invariant  (@invariants 없음 — P3 격상 대상 아님, skip)`);
+    } else {
+      const subs = ['state', 'temporal', 'transaction'].filter(s => new RegExp(`^\\s*${s}\\s*:`, 'm').test(invBlock));
+      if (subs.length === 0) { console.log(`    invariant  ✗ sub-section 없음 (state/temporal/transaction ≥1 필요)`); drift++; }
+      else console.log(`    invariant  ✓ sub-section: ${subs.join('·')}`);
+      const VOCAB = ['bounded', 'ordered', 'monotonic', 'member-of', 'within', 'after', 'at-most-once', 'idempotent', 'expires-after', 'atomic', 'rollback-safe', 'dual-write', 'commit-then', 'persist-before', 'precedes', 'iff', 'implies'];
+      const declared = VOCAB.filter(k => invBlock.includes(k));
+      if (declared.length === 0) { console.log(`    invariant  ✗ 권장 vocabulary 키워드 없음 (prose 만 — 정적 grep 불가)`); drift++; }
+      else {
+        const surviving = declared.filter(k => head.includes(k));
+        console.log(`    invariant  vocab ${surviving.length}/${declared.length} 잔존: ${surviving.slice(0, 8).join('·')}${surviving.length > 8 ? '…' : ''}`);
+        if (surviving.length === 0) { console.log(`    invariant  ✗ 선언 vocabulary 전부 산출물 누락 — 본질 손실(BlockerManifest §13.20-shaped)`); drift++; }
       }
     }
   }

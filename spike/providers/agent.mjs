@@ -33,6 +33,7 @@ export async function expand(spec, target, ctx) {
   const fmtDir = (k) => (spec[k] || '').split('\n').filter(Boolean).map(l => '//     ' + l).join('\n');
   const runtimeD = fmtDir('runtime'), rolesD = fmtDir('roles'), wireD = fmtDir('wire'), routingD = fmtDir('routing');
   const deliveryD = fmtDir('delivery'), redactionD = fmtDir('redaction'), opD = fmtDir('operation_discipline');
+  const invD = fmtDir('invariants'), metaD = fmtDir('metamorphic');   // P3 v1.2 행동 계약(§2.6/§2.7)
   const p = spec.ports || { in: [], cmd: [], out: [], deps: [] };
   const pin = p.in.map(x => `//     ${x.name}: ${x.type}${x.comment ? '   — ' + x.comment : ''}`).join('\n');
   const pcmd = (p.cmd || []).map(x => `//     ${x.name}(${x.args})${x.desc ? ': ' + x.desc : ''}`).join('\n');
@@ -71,6 +72,8 @@ export async function expand(spec, target, ctx) {
   if (deliveryD) L.push(' * │ delivery  (전달 계약 — semantics/msgId/liveness/termination/deadlock vocab):', deliveryD);
   if (redactionD) L.push(' * │ redaction (편집 계약 — hook/targets/authority, 로그·발신 양 경로):', redactionD);
   if (opD) L.push(' * │ operation (운영 규율 — principle/upstream_peer/wait_state/anti_patterns):', opD);
+  if (invD) L.push(' * │ invariants(행동계약 — state/temporal/transaction, prose+키워드 보존하며 구현):', invD);
+  if (metaD) L.push(' * │ metamorphic(변성성질 — round-trip/idempotency/determinism, P4 짝):', metaD);
   if (depsD) L.push(' * │ deps      (.eux 소스 의존 — 모듈 그래프, 참조용):', depsD);
   L.push(` * │ persist   : ${JSON.stringify(spec.persist)}`);
   L.push(` * │ targets   : ${spec.targets.join(', ')}`);
