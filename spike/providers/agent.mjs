@@ -80,7 +80,8 @@ export async function expand(spec, target, ctx) {
   L.push(' * └──────────────────────────────────────────────────────────────────');
   L.push(' */');
   L.push(`// TODO(@agent-brew): "${spec.component}" 를 ${target} 코드로 구현 — 위 명세 참조.`);
-  // G7: events-out / command-in 호출 지점 marker — 구현 시 이 시그니처가 산출물에 살아있어야(drift-check ports 검증). 완전 emit/handler chain 은 adopter 영역.
+  // G7: events-out / command-in 호출 지점 marker — 구현 시 이 시그니처가 산출물에 살아있어야(drift-check ports 검증).
+  //   @ports.out.<name>.post 절(§2.6 cmd-local 형식)의 anchor — marker 시그니처가 post detail 수준 결정. 완전 emit/handler chain 은 adopter 영역.
   if ((p.cmd && p.cmd.length) || (p.out && p.out.length)) {
     L.push('//   ┌ 인터페이스 호출 marker (시그니처 — 빠뜨리지 말 것):');
     for (const x of (p.cmd || [])) L.push(`//   · ${x.name}(${x.args})   ← cmd (호스트가 호출하는 진입점)`);

@@ -231,6 +231,7 @@ event-driven 운영 원칙 + anti-pattern 카탈로그.
 
 **cmd-local / transition-local 형식** — invariant 는 모듈 전역뿐 아니라 명령·전이 단위로도 적어요:
 - `@ports.cmd` 의 **`pre`/`post`** — `append(ev): pre: currentMode member-of {A,B,C}` · `post: query() 가 ev 포함 (ev ∉ skip_set 일 때)`.
+- `@ports.out` 의 **`post`** — events-out 발생 후 보장(예: `emit_a2a(...): post: 큐 head 삽입 ∧ ack_tier 기록`). stub 의 events-out marker(G7)가 이 절의 **anchor** — marker 시그니처가 `post` 의 detail 수준을 결정해요.
 - `@machine` 의 **`guard`/`entry-post`** — 기존 `entry:`/`on:` 위에 `guard: <pre-condition>` + `entry-post: <post-condition>`. (`@machine HistoryStoreMode` 의 `guard:` 선례 일반화.)
 
 **정적 검증** (drift-check `--invariant`, P3c) — invariant 는 본질이 *행동*이라 정적 grep 으로 위반을 잡을 수 없어요(실제 위반 검출은 P4 dynamic). 정적 게이트는 3가지만(협의 Q2=a):
