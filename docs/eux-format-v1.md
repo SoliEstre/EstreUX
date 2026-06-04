@@ -289,6 +289,7 @@ event-driven 운영 원칙 + anti-pattern 카탈로그.
 | **protocol-adapter** | `@ports` | `@machine`(핸드셰이크)·`@source` | `@render`(금지) |
 | **state-machine** | `@machine` | `@ports`·`@source` | `@render`(금지) |
 | **supervisor** | `@machine`·`@source` | `@deps`·`@behavior` | `@render`(금지)·`@ports.in`(면제 — 자가 발동) |
+| **css-asset** (v1.3) | `@source`(실 CSS sha)·`@owns`·`@trigger` | `@load`·`@size`·`@css-deps`·`@tokens` | `@render`(금지)·`@machine`(불요)·`@targets` UI Rimwork(금지) |
 
 **쉽게** — UI 면 "화면(@render)" 필수·"포트(@ports)" 불요. 백엔드면 그 반대(@ports 필수·@render 금지). 누가 불러서가 아니라 *스스로 깨어나* 무언가를 지켜보는 모듈(워치독·워처)이면 supervisor — 받는 포트가 없는 대신 상태머신(@machine)으로 "언제 깨어나 뭘 하나"를 적어요. 프로파일만 정해두면 brew 가 "이건 화면 만들 필요 없는 모듈"이라고 알아서 처리해요.
 
@@ -319,6 +320,41 @@ event-driven 운영 원칙 + anti-pattern 카탈로그.
   file: dashboard/live/ws-watchdog.cjs
 ```
 → "받는 입구는 없고, 주기적으로(또는 WS close 이벤트로) 깨어나 server·bridge 생존을 점검해 죽었으면 되살린다"를 한눈에. `@ports.in` 빈 선언 없이 깔끔하게.
+
+### `css-asset` 프로파일 — CSS 전략적-로딩 manifest (RCSS, v1.3)
+
+**무엇** — 실 CSS 파일을 *생성*하지 않고(=`@styles` lossy 함정 회피) **referencing 하면서 "어떤 CSS 가 어떤 handle/feature 에 속하고 언제 로드되는가"(전략적 로딩)를 1급으로** 기록하는 프로파일. 1 manifest = 1 CSS asset. **dual-purpose**: 분석 문서 = 런타임 로더 설정 SSoT.
+
+**왜** — `@styles` 는 NL 힌트를 brew 때 LLM 이 재합성(lossy)이라 실 CSS·로딩 전략을 못 담아요. v1.1(adapter contract)·v1.2(행동 계약)는 protocol/behavior 축이라 CSS 커버 0. `css-asset` 은 EstreUX 강점(provenance `@source`·sha drift·token SSoT)을 재활용하되, **forward-synth 를 *CSS 생성*이 아니라 *로더 생성*(`ensureStylesheet` + manifest 소비)에 적용** — 손실 없는 brew. (`@styles` 의 lossy CSS 재합성과 대비.)
+
+**핵심 디렉티브**:
+- `@component` — manifest 식별자(handle/feature 키).
+- `@source` — 실 CSS 파일 경로 + sha drift (provenance 재사용).
+- `@owns` — 이 asset 이 소유하는 셀렉터 목록.
+- `@trigger` — 로드 트리거 enum: `eager` \| `handle-first-use:<sel>` \| `page:<pid>` \| `feature:<key>` \| `idle` (`media:<query>` 반응형은 v-next 여지).
+- `@load` — 로드 시점/방식(`on-handle-active` 등).
+- `@size` — raw/gzip 크기(예산·측정).
+- `@css-deps` — **CSS-asset 그래프**(별칭 — 기존 `@deps`(.eux↔.eux 소스 그래프)와 의미 충돌 회피).
+- `@tokens` — `:root` var SSoT 브릿지(`@styles` 토큰과 정합).
+
+**예시**:
+```
+@component handle-calendar
+@profile css-asset
+@source styles/<handle>.css          # 실 파일 (referencing, sha drift)
+@owns .calendar-root .calendar-area .schedule-list
+@trigger handle-first-use : .calendar-root
+@load on-handle-active
+@size raw 105KB · gzip ~18KB
+@css-deps tokens-root                # CSS-asset 그래프 (실재)
+@tokens consumes var(--accent, …)    # :root token SSoT 브릿지
+```
+
+**brew(로더 생성)** — `@trigger`/`@load`/`@css-deps` → `ensureStylesheet(handle)` + manifest 소비 로더 코드 생성. CSS 는 손대지 않고 *로딩 코드*만 생성(forward-synth 의 손실 없는 적용).
+
+**`drift-check --css`** — 정적 3-gate: (1) `@source` 실 CSS 파일 존재 + sha 정합 (2) `@owns` 셀렉터 ↔ 실 CSS 잔존 (3) 생성 로더 ↔ manifest(`@trigger`/`@load`) 정합. 동적(실 로딩 측정·coverage)은 v-next.
+
+> RCSS(Reasonable CSS) — collab dogfooding 제안(2026-06-04 RRP 합의). eux-format §2.6/§2.7 행동 계약과 같은 "실사용 ↔ spec" dogfood 루프. 첫 adopter 가 manifest 작성 + 로더 brew 실증.
 
 ---
 
