@@ -17,6 +17,7 @@
  */
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, resolve, basename } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const args = process.argv.slice(2);
 const runMode = args.includes('--run');
@@ -70,7 +71,7 @@ if (!existsSync(anchorPath)) {
   process.exit(1);
 }
 try {
-  const anchor = await import(anchorPath);
+  const anchor = await import(pathToFileURL(anchorPath).href);   // Windows: 절대경로는 file:// URL 필요
   if (typeof anchor.run !== 'function') { console.error(`  ✗ ${comp}.p4.mjs 가 run(props) export 안 함.`); process.exit(1); }
   await anchor.run(props);   // anchor 가 fast-check 로 각 property 실행 + 결과 출력
   console.log('\n  P4 dynamic 검증 완료.');
