@@ -23,8 +23,9 @@ import { dirname, resolve } from 'node:path';
 const args = process.argv.slice(2);
 const contractMode = args.includes('--contract');
 const invariantMode = args.includes('--invariant');   // Phase C: 행동 계약(@invariants) 정적 게이트 (P3c)
+const cssMode = args.includes('--css');                // Phase D: css-asset(@source CSS sha + @owns 셀렉터) 게이트 (R3)
 const euxPath = args.find(a => !a.startsWith('-'));
-if (!euxPath) { console.error('usage: drift-check.mjs [--contract] [--invariant] <file.eux>'); process.exit(2); }
+if (!euxPath) { console.error('usage: drift-check.mjs [--contract] [--invariant] [--css] <file.eux>'); process.exit(2); }
 
 const raw = readFileSync(euxPath, 'utf8');
 const sha = createHash('sha256').update(raw).digest('hex').slice(0, 12);
@@ -112,6 +113,7 @@ console.log(`drift-check — ${comp}.eux (sha256:${sha})${contractMode ? ' [--co
 for (const id of targets) {
   const out = resolve(baseDir, 'dist', id, `${comp}.js`);
   if (!existsSync(out)) {
+    if (cssMode) { console.log(`  ~ ${id.padEnd(8)} 로더 미생성 — css-asset 은 R4 로더 brew 후 (--css gate 1/2 는 @source/@owns 로 진행)`); continue; }
     console.log(`  ✗ ${id.padEnd(8)} MISSING — 재생성 필요`);
     drift++;
     continue;
@@ -182,6 +184,34 @@ for (const id of targets) {
         const surviving = declared.filter(k => head.includes(k));
         console.log(`    invariant  vocab ${surviving.length}/${declared.length} 잔존: ${surviving.slice(0, 8).join('·')}${surviving.length > 8 ? '…' : ''}`);
         if (surviving.length === 0) { console.log(`    invariant  ✗ 선언 vocabulary 전부 산출물 누락 — 본질 손실(BlockerManifest §13.20-shaped)`); drift++; }
+      }
+    }
+  }
+}
+
+// Phase D: --css css-asset 정적 게이트 (R3, RCSS v1.3) — @source 실 CSS sha + @owns 셀렉터 잔존.
+//   (로더 ↔ manifest(@trigger/@load) 정합 gate 는 R4 로더 brew 후. 동적 실 로딩 측정은 v-next.)
+if (cssMode) {
+  const cssProfile = (raw.match(/^@profile\s+(.+)$/m) || [])[1]?.trim();
+  if (cssProfile !== 'css-asset') {
+    console.log(`  --css  (css-asset profile 아님 — skip)`);
+  } else {
+    const srcM = raw.match(/^@source\s+(\S+)/m);
+    if (!srcM) { console.log(`  css  ✗ @source 없음 (css-asset 필수)`); drift++; }
+    else {
+      const cssPath = resolve(baseDir, srcM[1]);
+      if (!existsSync(cssPath)) { console.log(`  css  ✗ @source ${srcM[1]} — 실 CSS 파일 없음 (dogfood 시 필요)`); drift++; }
+      else {
+        const css = readFileSync(cssPath, 'utf8');
+        const cssSha = createHash('sha256').update(css).digest('hex').slice(0, 12);
+        console.log(`  css  ✓ @source ${srcM[1]} (sha256:${cssSha})`);
+        const ownsM = raw.match(/^@owns\s+(.+)$/m);
+        const owns = ownsM ? ownsM[1].split(/\s+/).filter(Boolean) : [];
+        for (const sel of owns) {
+          if (css.includes(sel)) console.log(`  css  ✓ owns ${sel} — 실 CSS 잔존`);
+          else { console.log(`  css  ✗ owns ${sel} — 실 CSS 에 없음`); drift++; }
+        }
+        console.log(`  css  (로더 ↔ manifest 정합 gate 는 R4 로더 brew 후)`);
       }
     }
   }
