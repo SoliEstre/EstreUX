@@ -1,6 +1,6 @@
 {
   "name": "estreux",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "EstreUX (Universal eXpression) — .eux 자연어 중간 소스 → 전 개발 영역(UI/backend/protocol/state machine/data) 코드로 brew. UI 한정 아님.",
   "type": "module",
   "bin": {
@@ -13,6 +13,7 @@
     "spike/p4-check.mjs",
     "spike/providers/",
     "spike/notif-toggle.eux",
+    "spike/fixtures/",
     "docs/",
     "BREW.md",
     "NOTICE"
@@ -37,6 +38,7 @@
     "expand": "node spike/expand.mjs spike/notif-toggle.eux",
     "drift": "node spike/drift-check.mjs spike/notif-toggle.eux",
     "p4": "node spike/p4-check.mjs spike/notif-toggle.eux",
+    "css": "node spike/drift-check.mjs --css spike/fixtures/css-asset/handle-calendar.eux",
     "spike": "node spike/expand.mjs spike/notif-toggle.eux && node spike/drift-check.mjs spike/notif-toggle.eux",
     "prepare": "git config core.hooksPath .githooks"
   },

@@ -2,6 +2,26 @@
 
 > EstreUX(`.eux` Universal eXpression) 변경 이력. 형식은 [Keep a Changelog](https://keepachangelog.com) 약식.
 
+## 0.4.0 (2026-06-05)
+
+`.eux` 에 **CSS 전략적-로딩 manifest**(`css-asset` 프로파일, RCSS collab) 를 추가한 minor — 실 서비스 dogfooding 으로 정적+동적 한 바퀴 실증.
+
+### Added
+- **eux-format v1.3** — `css-asset` 프로파일 ([docs/eux-format-v1.md](docs/eux-format-v1.md) §3): 실 CSS 를 *생성*하지 않고 referencing 하면서 "어떤 CSS 가 어떤 handle/feature 에 속하고 언제 로드되는가"(전략적 로딩)를 1급으로 기록. dual-purpose(분석 문서 = 런타임 로더 설정 SSoT). 디렉티브: `@source`/`@owns`/`@trigger`(`eager`/`handle-first-use:<sel>`/`page`/`feature`/`idle`)/`@load`/`@size`/`@css-deps`(별칭 — `@deps`(.eux 소스 그래프)와 의미 분리)/`@tokens`.
+- **`drift-check --css`** — css-asset 정적 3-gate: (1) `@source` 실 CSS sha+존재 (2) `@owns` 셀렉터 ↔ 실 CSS 잔존 (3) 생성 로더 ↔ manifest(`@source`/`@trigger`/`@load`) 정합(`ensureStylesheet`+파일명+셀렉터 hook+전략 잔존). `--invariant`/`p4-check` 와 같은 brew↔검증 대칭.
+- **css-asset 로더 brew** — `@trigger`/`@load`/`@css-deps` → `ensureStylesheet`(handle) + manifest 소비 로더 코드 생성(agent provider). forward-synth 를 *CSS 생성* 이 아닌 *로딩 코드 생성* 에 적용(손실 없음).
+- **`spike/fixtures/css-asset/`** (신규 예제) — `handle-calendar` css-asset manifest + 실 CSS + brew 로더 + `npm run css` 스크립트.
+
+### Changed
+- `parseEux` — `@css-deps` 하이픈 디렉티브 정규식 + css-asset FREETEXT + 디렉티브 한 줄 값 + `@ports` out/cmd desc-optional.
+- `@agent-brew` stub — css-asset 블록(owns/trigger/load/size/css-deps/tokens + `ensureStylesheet` 로더 지시) 표시.
+- `files` — `spike/fixtures/` 추가(css-asset 예제).
+
+### Notes
+- **RCSS(Reasonable CSS) collab dogfooding**(2026-06-04 RRP 합의) — 실 서비스 css-asset 디퍼 2건(handle-first-use ~105KB + feature ~174KB) `drift-check --css` gate1/2/3 ALL PASS + 음성 테스트(bogus 셀렉터→gate2 ✗) non-vacuous + 실배포 Playwright 동적 측정(초기 경로 CSSOM −616 rules/−17.2%, 디퍼 자산 초기 styleSheets 부재 확인). gate3 를 합성 fixture 아닌 실 brew 로더로 첫 통과 = forward-synth 로더 모델 실증.
+- dogfooding 메타 교훈 — 최적화 도구 채택 ≠ 실 증상 진단(도구 실증과 원 동기 해결은 별개; 원 동기 root cause 가 도구 영역과 직교할 수 있음).
+- 잔여(v-next): 동적 `drift-check`(P4류 — 초기 styleSheets 부재/CSSOM·transfer 델타) · companion CSS group 표현(`@css-deps` 그래프 or group manifest).
+
 ## 0.3.0 (2026-06-04)
 
 `.eux` 를 **행동 계약 검증**(P3 정적 + P4 dynamic)까지 확장한 minor — Constellation brew dogfooding(EG 협업) 산출.
