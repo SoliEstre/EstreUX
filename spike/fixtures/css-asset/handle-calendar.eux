@@ -1,0 +1,13 @@
+@component handle-calendar
+@profile css-asset
+@source ./handle-calendar.css
+@owns .calendar-root .calendar-grid .calendar-cell
+@trigger handle-first-use:.calendar-root
+@load on-handle-active
+@size 105KB
+@css-deps base-tokens
+@tokens --cal-bg --cal-border
+
+캘린더 핸들을 처음 사용할 때 무거운 캘린더 스타일시트를 지연 로딩하는 css-asset.
+.calendar-root 가 활성화되면 on-handle-active 전략으로 로더가 스타일시트를 1회 주입한다(ensureStylesheet).
+css-asset 은 코드를 생성하지 않고 실 CSS 파일(@source)을 참조 + 로딩 전략(@trigger/@load)을 1급 기록한다.

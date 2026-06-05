@@ -1,0 +1,17 @@
+/* handle-calendar.css — demo css-asset fixture (anonymized)
+ * 무거운 캘린더 스타일시트를 흉내내는 데모. 실 서비스 자산 아님. */
+.calendar-root {
+  display: grid;
+  gap: 4px;
+  background: var(--cal-bg, #fff);
+}
+.calendar-grid {
+  grid-template-columns: repeat(7, 1fr);
+}
+.calendar-cell {
+  padding: 6px;
+  border: 1px solid var(--cal-border, #ddd);
+}
+.calendar-cell--today {
+  font-weight: 600;
+}
