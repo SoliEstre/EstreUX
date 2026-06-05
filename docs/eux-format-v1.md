@@ -352,7 +352,9 @@ event-driven 운영 원칙 + anti-pattern 카탈로그.
 
 **brew(로더 생성)** — `@trigger`/`@load`/`@css-deps` → `ensureStylesheet(handle)` + manifest 소비 로더 코드 생성. CSS 는 손대지 않고 *로딩 코드*만 생성(forward-synth 의 손실 없는 적용).
 
-**`drift-check --css`** — 정적 3-gate: (1) `@source` 실 CSS 파일 존재 + sha 정합 (2) `@owns` 셀렉터 ↔ 실 CSS 잔존 (3) 생성 로더 ↔ manifest(`@trigger`/`@load`) 정합. 동적(실 로딩 측정·coverage)은 v-next.
+**`drift-check --css`** — 정적 3-gate: (1) `@source` 실 CSS 파일 존재 + sha 정합 (2) `@owns` 셀렉터 ↔ 실 CSS 잔존 (3) 생성 로더 ↔ manifest(`@source`/`@trigger`/`@load`) 정합 — 로더에 `ensureStylesheet`·`@source` 파일명·`@trigger` 셀렉터(`handle-first-use:<sel>`만; `feature`/`page`/`idle`/`eager`는 셀렉터 hook 아니라 skip)·`@load` 전략이 잔존하는지. 동적(실 로딩 측정·coverage)은 v-next.
+
+> **gate3 의 `@source` 정합은 substring(`includes`) 체크예요** — 로더의 *served href*(앱 기준, 예: `./styles/…`)와 manifest `@source`(*.eux 기준 상대 경로*)가 달라도, **파일명이 로더에 살아있으면 정합 통과**. 유연하지만 둘이 다른 경로일 수 있으니 어댑터는 "loader href = 앱 served path · `@source` = .eux 기준 상대 · gate3 = 파일명 substring 정합"으로 이해하면 돼요. (2026-06-05 실 자산 dogfood 관찰 — toastui editor `min.css` 처럼 served path ≠ .eux 상대인 경우.)
 
 > RCSS(Reasonable CSS) — collab dogfooding 제안(2026-06-04 RRP 합의). eux-format §2.6/§2.7 행동 계약과 같은 "실사용 ↔ spec" dogfood 루프. 첫 adopter 가 manifest 작성 + 로더 brew 실증.
 
