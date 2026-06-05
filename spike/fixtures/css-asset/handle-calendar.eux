@@ -1,5 +1,7 @@
 @component handle-calendar
 @profile css-asset
+@expansion model=agent/claude
+@targets loader
 @source ./handle-calendar.css
 @owns .calendar-root .calendar-grid .calendar-cell
 @trigger handle-first-use:.calendar-root

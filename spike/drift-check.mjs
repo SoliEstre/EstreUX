@@ -211,7 +211,29 @@ if (cssMode) {
           if (css.includes(sel)) console.log(`  css  ✓ owns ${sel} — 실 CSS 잔존`);
           else { console.log(`  css  ✗ owns ${sel} — 실 CSS 에 없음`); drift++; }
         }
-        console.log(`  css  (로더 ↔ manifest 정합 gate 는 R4 로더 brew 후)`);
+        // gate3 (R4): 생성 로더 ↔ manifest(@source/@trigger/@load) 정합 — forward-synth 로딩 코드 검증.
+        //   로더는 referencing-only(CSS 바이트 미복제)라, @source 파일명·@trigger 셀렉터·@load 전략이 로더에 살아있어야 정합.
+        const triggerSel = (raw.match(/^@trigger\s+handle-first-use\s*:\s*(\S+)/m) || [])[1];   // handle-first-use:<sel> 셀렉터 hook (공백 허용 — 문서 예시 `handle-first-use : .sel` 정합). eager/page/feature/idle 은 셀렉터 hook 아님 → gate3 trigger 체크 skip
+        const loadStrat = (raw.match(/^@load\s+(.+)$/m) || [])[1]?.trim();
+        const srcFile = srcM[1].replace(/^\.\//, '');
+        let loaderFound = false;
+        for (const id of targets) {
+          const loaderPath = resolve(baseDir, 'dist', id, `${comp}.js`);
+          if (!existsSync(loaderPath)) continue;
+          loaderFound = true;
+          const loader = readFileSync(loaderPath, 'utf8');
+          const checks = [
+            ['ensureStylesheet 로더 함수', /ensureStylesheet\s*\(/.test(loader)],
+            [`@source ${srcFile} 참조`, loader.includes(srcFile)],
+            ...(triggerSel ? [[`@trigger ${triggerSel} 참조`, loader.includes(triggerSel)]] : []),
+            ...(loadStrat ? [[`@load ${loadStrat} 반영`, loader.includes(loadStrat)]] : []),
+          ];
+          for (const [label, ok] of checks) {
+            if (ok) console.log(`  css  ✓ gate3 ${id} — ${label}`);
+            else { console.log(`  css  ✗ gate3 ${id} — ${label} 누락`); drift++; }
+          }
+        }
+        if (!loaderFound) console.log(`  css  (로더 미생성 — gate3 는 R4 로더 brew 후. gate1/2 는 정합)`);
       }
     }
   }
