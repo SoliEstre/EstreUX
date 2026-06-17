@@ -71,3 +71,7 @@ node spike/drift-check.mjs examples/wordchain.eux
 ```
 
 `.eux` ↔ `dist/*` 산출물의 source sha 일관성을 검사한다(불일치 = 재-brew 필요). 이 예제의 산출물은 brew provider `agent`(에이전트가 `.eux` 를 읽어 직접 변환)로 생성됐다 — 결정적 `template` PoC(`npm run brew`/`drift`)는 [`../spike/`](../spike/) 의 notif-toggle 전용이다.
+
+## http-checks-card — brew 도입 PoC
+
+hand-author 컴포넌트를 brew 흐름으로 전환한 도입 PoC([`docs/brew-adoption.md`](../docs/brew-adoption.md) 케이스). [`http-checks-card.eux`](http-checks-card.eux)(비표준 `@element`/`@props`/`@const` → 정식 `@component`/`@ports`/`@styles` 변환) → `estreux brew` → [`dist/estreuv/http-checks-card.js`](dist/estreuv/http-checks-card.js)(에이전트 본문, provenance 헤더 유지) → drift `✓ in sync`. 실프로젝트의 `.eux`↔코드 수동 N-way 동기화를 brew로 없애는 절차를 1컴포넌트로 시연.

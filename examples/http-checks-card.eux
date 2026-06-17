@@ -1,0 +1,40 @@
+@component http-checks-card
+@profile ui-component
+@intent 외부 HTTP 업타임 체크 카드 — check.<id>.up(1/0)·check.<id>.ms(응답시간) 를 주소별 행(상태 점·id·응답시간 게이지·ms)으로 보여주고, 행 클릭 시 그 체크의 응답시간 단독 그래프를 연다. 일반 서버 카드와 다른 전용 표시(게이지 대신 체크 목록).
+@expansion model=agent/claude
+@targets estreuv
+
+@ports
+in   server : String   # 모니터 대상 가상 서버 id (보통 '@checks')
+deps chartDetail : object   # 응답시간 단독 그래프 오프너(주입 — open({server, metric}) 보유)
+
+@state
+rows : array = []      # [{id, up:bool, ms:number}] — 데이터코어 latest 의 check.<id>.up/.ms 파생
+online : boolean = false
+
+@behavior
+resync : 데이터코어 server(server).latest 에서 check.<id>.up(→up)·check.<id>.ms(→ms) 를 id별로 묶어 rows 로. 실패(down) 먼저 → id순 정렬. online 은 server.online.
+connectedCallback : resync + 데이터코어 on('init')·on('metrics'(자기 server))·on('presence'(자기 server)) 구독
+disconnectedCallback : 모든 구독 해제
+rowClick(id) : chartDetail.open({ server, metric: 'check.' + id + '.ms' })
+
+@render
+다크 카드. 헤더: 🌐 + '외부 체크' + 'up/total 정상' 알약(전부 정상=ok톤 · 일부 실패=crit톤).
+본문: 주소별 행 — 상태 점(up=ok·down=crit) · id · 응답시간 고정-최대 게이지 · 등급 라벨 · ms 텍스트.
+  게이지: 고정 최대(msMax=2000ms) 기준 채움률(0~100%). down 은 full 빨강.
+  등급(ms 상한): good ≤200 · fine ≤500 · bad ≤1000 · issue ≤2000 · 초과 또는 down = failure. 등급색으로 채움·라벨·ms 색 구분.
+  트랙 배경에 구간(good/fine/bad/issue)을 옅게 깔아 위치 가늠. down 은 ms='실패'.
+하단 힌트: "응답시간 게이지: 고정 최대 2000ms · good ≤200 · fine ≤500 · bad ≤1000 · issue ≤2000 · 초과·실패=failure". 체크 없으면 '외부 체크 대기 중…'.
+
+@styles
+msMax = 2000              # 게이지 고정 최대(ms) — 초과는 100%(failure)
+grade-good   = #34c759    # ms ≤ 200
+grade-fine   = #8fd14f    # ms ≤ 500
+grade-bad    = #ffd60a    # ms ≤ 1000
+grade-issue  = #ff9f0a    # ms ≤ 2000
+grade-failure= #ff4d4f    # 초과 또는 down
+.card : 다크 var(--ltnc-card,#1a1d23) · var(--ltnc-text,#e8eaed) · 1px 보더 rgba(255,255,255,.06) · 12px 라운드 · 12/14px 패딩
+.row  : flex·align center·gap 8px · 4/6px 패딩 · 7px 라운드 · cursor pointer · hover bg rgba(255,255,255,.05)
+.dot  : 8px 원 · 기본 crit · .on → ok(+glow)
+.bar  : flex 1 · 6px 높이 · 3px 라운드 · 트랙 배경 = good/fine/bad/issue 구간 옅은 그라데이션(10/25/50/100%)
+.grade .ms : 우측 정렬 · tabular-nums · 등급색
