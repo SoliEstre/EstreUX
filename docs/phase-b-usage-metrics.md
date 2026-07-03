@@ -11,7 +11,7 @@
 | 프로젝트 | spec 수 | brew 산출 | 비고 |
 | --- | --- | --- | --- |
 | EstreUX 자체 (examples + spike) | 4 | estreuv 1 · 3변종(pair/estreui/estreuv) 1 | http-checks-card(도입 가이드 PoC) · wordchain · notif-toggle · handle-calendar(css-asset fixture) |
-| 허브 라이브 대시보드 (`dashboard/live/eux/`) | 12 | node 4 · vanilla 7 (server.eux 포함 11 산출) | 운영 인프라 증류 — watchdog/bridge/wait/tabs/conn-bar 등 실가동 코드의 스펙화 |
+| 허브 라이브 대시보드 (`dashboard/live/eux/`) | 11 | node 4 · vanilla 7 (11 산출) | 운영 인프라 증류 — watchdog/bridge/wait/tabs/conn-bar 등 실가동 코드의 스펙화 |
 
 ### X1 — 코드 작성량 절감 (spec LoC vs brew LoC)
 
@@ -36,7 +36,7 @@
 | wordchain-story 3변종 | ✓ estreuv·estreui·pair | 0건 | 〃 |
 | notif-toggle 3변종 | ✓ estreuv·estreui·pair | 0건 | 〃 |
 | handle-calendar (css-asset) | ✓ loader | 0건 | 〃 |
-| 라이브보드 12 spec | **✗ 미적용** | 측정 불가 | dist가 drift-check 게이트 밖 — 후속 작업 후보 ① |
+| 라이브보드 11 spec | **✗ 미적용** | 측정 불가 | dist가 drift-check 게이트 밖 — 후속 작업 후보 ① |
 
 > EstreUX 자체 4 spec은 **전부 게이트 내 + pre-commit 훅에서 매 커밋 전수 검증**됨 (2026-07-03 커밋에서 실증 — 훅이 4 spec 8 산출을 자동 검사).
 
@@ -54,6 +54,6 @@
 
 ## 잔여 (Phase B 게이트의 마지막 조각)
 
-- **① 라이브보드 12 spec의 drift-check 게이트 편입** — X3 실측 활성화.
+- **① 라이브보드 11 spec의 drift-check 게이트 편입** — X3 실측 활성화.
 - **② 라이브 LLM 실연동 실측 1회** (openai-compatible 경로, API 키 보유) — provider 수평선택 검증. 사용자 승인 맥락(d-google-brew) 재확인 후 실행.
 - 이 둘 완료 시 Phase B(다중 채널·reverse sync·Estrim) 착수 조건 충족으로 판정.
