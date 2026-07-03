@@ -1,0 +1,19 @@
+@component notif-toggle
+@intent 알림 수신 on/off 토글 + 안 읽은 알림 개수 배지. 상태는 새로고침 후에도 유지.
+@expansion temperature=0 model=google/gemini-2.5-flash template=estreux/v0.0.1
+@targets estreuv, estreui, pair
+
+@state
+enabled: boolean = true    # 알림 수신 여부
+count: number = 0          # 안 읽은 알림 수
+
+@behavior
+toggle  : enabled 를 반전하고 영속
+bump(n) : count 에 n 을 더함
+clear   : count 를 0 으로 되돌림
+
+@render
+enabled=true 면 🔔, false 면 🔕 버튼. 클릭하면 toggle.
+count > 0 이면 버튼 우상단에 count 배지 표시.
+
+@persist localStorage key=notif-toggle fields=enabled,count

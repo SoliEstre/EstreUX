@@ -53,5 +53,5 @@
 
 - (2단계) 플래그십 데모 1 페이지 슬라이스로 같은 흐름 재현 → 실 evidence (플래그십 데모 선행)
 - drift-check CI 단계(GitHub Actions)
-- 라이브 LLM 연동 실측(openai-compatible 경로) — Phase B
+- ~~라이브 LLM 연동 실측(openai-compatible 경로)~~ — ✅ 2026-07-03 완료(google/gemini-2.5-flash 2타깃 실산출, docs/phase-b-usage-metrics.md ②)
 - estreux/create-estreux npm **가용성 확인만**(publish 는 Phase B, Q-EUX-3)

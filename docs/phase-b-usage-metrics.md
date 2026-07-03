@@ -55,5 +55,7 @@
 ## 잔여 (Phase B 게이트의 마지막 조각)
 
 - ~~**① 라이브보드 11 spec의 drift-check 게이트 편입**~~ — ✅ **완료 (2026-07-03)**: dist 11 산출 provenance 완비 확인·전수 PASS·허브 pre-commit `euxDriftGate` 편입(negative 테스트 포함 3-way 검증). X3 실측 활성화.
-- **② 라이브 LLM 실연동 실측 1회** (openai-compatible 경로, API 키 보유) — provider 수평선택 검증. 승인 맥락 확보됨(d-google-brew ① 사용자 이행: expand.mjs 권한 + ESTREUX_LLM_API_KEY 등록).
-- ② 완료 시 Phase B(다중 채널·reverse sync·Estrim) 착수 조건 충족으로 판정.
+- ~~**② 라이브 LLM 실연동 실측 1회**~~ — ✅ **완료 (2026-07-03)**: `google/gemini-2.5-flash`(Gemini OpenAI-호환 레이어) 경유 notif-toggle 실 brew — **estreuv·estreui 2 타깃 라이브 산출**(`spike/llm-live/`), provenance·extractCode 파이프라인 정상, @state/@render 계약 반영 확인(Lit customElement + enabled 필드). pair 타깃은 google 측 지속 503(과부하)으로 미완 — 경로 검증 목적은 달성.
+  - **관찰 1 (verbosity)**: agent brew 28L vs LLM 161L(estreuv)/252L(estreui) — 동일 spec에서 LLM 산출이 6~9배 verbose(JSDoc·방어 코드 포함). agent provider의 간결성이 X1 절감의 주요인.
+  - **관찰 2 (가용성 매트릭스)**: 2.5-flash 성공 2회 후 지속 503 · 2.5-flash-lite 503 · 2.0-flash 404(retired) — 라이브 경로는 모델 가용성 변동에 노출, **재시도가 매 실행 전 타깃 재호출**이라 부분 실패 시 비효율(향후 개선 후보: 기존 산출 skip 옵션).
+- **Phase B(다중 채널·reverse sync·Estrim) 착수 조건 충족 판정 — 2026-07-03.** 착수 순서는 EG parity-roadmap 조율과 조정.
