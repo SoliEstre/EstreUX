@@ -32,9 +32,13 @@
 
 | 대상 | sha 게이트 | drift 발생 | 측정 |
 | --- | --- | --- | --- |
-| http-checks-card | ✓ (drift-check) | **0건** | 2026-06-17 도입 → 2026-07-03 재검증 `✓ estreuv in sync` |
-| notif-toggle 3변종 | ✓ (spike 게이트) | 0건 | spike 이후 변경 없음 |
+| http-checks-card | ✓ estreuv | **0건** | 2026-06-17 도입 → 2026-07-03 pre-commit 전수 재검증 in sync |
+| wordchain-story 3변종 | ✓ estreuv·estreui·pair | 0건 | 〃 |
+| notif-toggle 3변종 | ✓ estreuv·estreui·pair | 0건 | 〃 |
+| handle-calendar (css-asset) | ✓ loader | 0건 | 〃 |
 | 라이브보드 12 spec | **✗ 미적용** | 측정 불가 | dist가 drift-check 게이트 밖 — 후속 작업 후보 ① |
+
+> EstreUX 자체 4 spec은 **전부 게이트 내 + pre-commit 훅에서 매 커밋 전수 검증**됨 (2026-07-03 커밋에서 실증 — 훅이 4 spec 8 산출을 자동 검사).
 
 해석: 게이트가 있는 곳의 drift는 0. 단 표본 기간이 짧고(2주) 라이브보드 집합이 게이트 밖이라 **X3의 실질 측정은 후속 ①(라이브보드 drift-check 편입) 이후** 유의미해진다.
 
