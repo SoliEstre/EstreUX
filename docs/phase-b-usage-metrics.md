@@ -36,11 +36,11 @@
 | wordchain-story 3변종 | ✓ estreuv·estreui·pair | 0건 | 〃 |
 | notif-toggle 3변종 | ✓ estreuv·estreui·pair | 0건 | 〃 |
 | handle-calendar (css-asset) | ✓ loader | 0건 | 〃 |
-| 라이브보드 11 spec | **✗ 미적용** | 측정 불가 | dist가 drift-check 게이트 밖 — 후속 작업 후보 ① |
+| 라이브보드 11 spec | ✓ (2026-07-03 편입) | 0건 | provenance 11/11 완비 확인 + 전수 PASS + 허브 pre-commit `euxDriftGate` 편입(eux 변경 시 조건부 전수 검사, 3-way 검증) |
 
 > EstreUX 자체 4 spec은 **전부 게이트 내 + pre-commit 훅에서 매 커밋 전수 검증**됨 (2026-07-03 커밋에서 실증 — 훅이 4 spec 8 산출을 자동 검사).
 
-해석: 게이트가 있는 곳의 drift는 0. 단 표본 기간이 짧고(2주) 라이브보드 집합이 게이트 밖이라 **X3의 실질 측정은 후속 ①(라이브보드 drift-check 편입) 이후** 유의미해진다.
+해석: 게이트가 있는 곳의 drift는 0 — 2026-07-03부로 **16 spec 전부 게이트 내**. 표본 기간이 짧아(2주) 빈도 곡선은 이후 커밋 이력에서 축적된다.
 
 ### X4 — 변종 간 절감 (유지보수)
 
@@ -54,6 +54,6 @@
 
 ## 잔여 (Phase B 게이트의 마지막 조각)
 
-- **① 라이브보드 11 spec의 drift-check 게이트 편입** — X3 실측 활성화.
-- **② 라이브 LLM 실연동 실측 1회** (openai-compatible 경로, API 키 보유) — provider 수평선택 검증. 사용자 승인 맥락(d-google-brew) 재확인 후 실행.
-- 이 둘 완료 시 Phase B(다중 채널·reverse sync·Estrim) 착수 조건 충족으로 판정.
+- ~~**① 라이브보드 11 spec의 drift-check 게이트 편입**~~ — ✅ **완료 (2026-07-03)**: dist 11 산출 provenance 완비 확인·전수 PASS·허브 pre-commit `euxDriftGate` 편입(negative 테스트 포함 3-way 검증). X3 실측 활성화.
+- **② 라이브 LLM 실연동 실측 1회** (openai-compatible 경로, API 키 보유) — provider 수평선택 검증. 승인 맥락 확보됨(d-google-brew ① 사용자 이행: expand.mjs 권한 + ESTREUX_LLM_API_KEY 등록).
+- ② 완료 시 Phase B(다중 채널·reverse sync·Estrim) 착수 조건 충족으로 판정.
