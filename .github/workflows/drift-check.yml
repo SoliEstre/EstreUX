@@ -1,0 +1,30 @@
+# EstreUX drift CI — .eux ↔ 산출물 일관성 검사 (PM 009 B6)
+# pre-commit 훅(.githooks/pre-commit)과 동일 로직의 CI 이중화 — 훅 미설치 클론·
+# GitHub 웹 편집·force-push 우회 등 로컬 게이트가 못 잡는 경로를 서버측에서 차단.
+name: drift-check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # deps-0 — npm install 불요. 추적되는 모든 .eux 전수 drift-check.
+      - name: drift-check all specs
+        run: |
+          fail=0
+          for eux in $(git ls-files '*.eux'); do
+            node spike/drift-check.mjs "$eux" || fail=1
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo ""
+            echo "::error::EstreUX drift — .eux 와 산출물이 불일치합니다. 'npm run expand' 후 다시 push 하세요."
+            exit 1
+          fi

@@ -18,8 +18,10 @@ import { resolveProvider, parseModel } from './providers/index.mjs';
 
 let _args = process.argv.slice(2);
 if (_args[0] === 'brew' || _args[0] === 'expand') _args = _args.slice(1);   // 서브명령 별칭 (brew = 정식, expand = 호환)
+const skipExisting = _args.includes('--skip-existing');                     // 부분 실패 재시도용: 현 spec sha 와 provenance 일치하는 산출물은 건너뜀
+if (skipExisting) _args = _args.filter((a) => a !== '--skip-existing');
 const euxPath = _args[0];
-if (!euxPath) { console.error('usage: estreux brew <file.eux>   (별칭: expand)'); process.exit(2); }
+if (!euxPath) { console.error('usage: estreux brew <file.eux> [--skip-existing]   (별칭: expand)'); process.exit(2); }
 
 const raw = readFileSync(euxPath, 'utf8');
 const sha = createHash('sha256').update(raw).digest('hex').slice(0, 12);
@@ -105,7 +107,17 @@ const ctx = { expansion: spec.expansion, sha, modelProvider, modelName };
 
 const t0 = Date.now();
 const written = [];
+const skipped = [];
 for (const id of spec.targets) {
+  const out = resolve(baseDir, 'dist', id, `${spec.component}.js`);
+  if (skipExisting) {
+    // 라이브 LLM 부분 실패 재시도 시 전-타깃 재호출 비효율 해소 (2026-07-03 관찰):
+    // 산출물의 provenance sha 가 현 spec sha 와 일치하면 이 타깃은 이미 최신 — 건너뜀.
+    try {
+      const head = readFileSync(out, 'utf8').slice(0, 400);
+      if (head.includes(`sha256:${sha}`)) { skipped.push({ id, out }); continue; }
+    } catch {}
+  }
   let body;
   try {
     body = await provider.expand(spec, id, ctx);
@@ -113,7 +125,6 @@ for (const id of spec.targets) {
     console.error(`✗ expand 실패 [${id}] via ${provider.id}: ${e.message}`);
     process.exit(1);
   }
-  const out = resolve(baseDir, 'dist', id, `${spec.component}.js`);
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, header(id, provider.id) + body);
   written.push({ id, out });
@@ -122,4 +133,5 @@ const ms = Date.now() - t0;
 console.log(`estreux brew — ${spec.component}.eux (sha256:${sha}) · provider=${provider.id}`);
 console.log(`  trio: ${trio}`);
 for (const w of written) console.log(`  ✓ ${w.id.padEnd(8)} → ${w.out.replace(baseDir + '/', '').replace(baseDir + '\\', '')}`);
-console.log(`  ${written.length} targets in ${ms}ms`);
+for (const w of skipped) console.log(`  ↷ ${w.id.padEnd(8)} skip (provenance sha 일치 — 최신)`);
+console.log(`  ${written.length} targets in ${ms}ms${skipped.length ? ` (+${skipped.length} skipped)` : ''}`);

@@ -14,7 +14,7 @@
 > 일반 brew = `agent`(요청 에이전트 직접). API(openai-compatible)는 **모델별 brew 벤치마크**일 때 — 추가 정보가 필요하므로 기본이 아니다.
 
 ## 에이전트 brew (기본 흐름)
-1. `node spike/expand.mjs <file.eux>` (`model=agent/…`) → `dist/<target>/<comp>.js` 에 **provenance 헤더 + `@agent-brew` 계약**(spec 요약 + 지시) 스텁 생성.
+1. `node spike/expand.mjs <file.eux>` (`model=agent/…`) → `dist/<target>/<comp>.js` 에 **provenance 헤더 + `@agent-brew` 계약**(spec 요약 + 지시) 스텁 생성. **`--skip-existing`**: provenance sha 가 현 spec 과 일치하는 산출물은 건너뜀 — 라이브 LLM 부분 실패(일부 타깃만 성공) 재시도 시 성공분 재호출 비효율 해소 (2026-07-04, B6).
 2. 에이전트(요청받은 IDE 세션/서브에이전트)가 그 파일을 열어 `@agent-brew` 블록 지시대로 **실제 `<target>` 코드로 본문 대체** — provenance 헤더는 **유지**(drift-check 통과).
 3. `node spike/drift-check.mjs <file.eux>` → `.eux` sha ↔ 생성물 provenance sha 일치 확인.
 4. `.eux` 를 고치면 재 brew(헤더 sha 갱신) → drift 해소. (pre-commit hook 으로 표류 차단)
