@@ -1,0 +1,23 @@
+@component notice-badge
+@intent 미확인 알림 수 배지 — **타 프레임워크(React) 마이그레이션 경로 실증 1호** (PM 009 Phase B B5, 2026-07-04 정렬 리뷰 V5-b). 원본은 전형적 React 함수 컴포넌트(props·useState·useEffect 타이머·조건부 렌더·콜백 prop). distill 은 target-무관이므로 React 관용구를 그대로 명세로 올리고, brew 가 estreuv(Lit) 관용구로 재구현한다 — 매핑: props→reactive properties, useState→내부 reactive state, useEffect(cleanup)→타이머 lifecycle 제어, JSX 조건부→render() 분기, 콜백 prop→CustomEvent(event-up).
+@source
+  file: migration-samples/react-notice-badge.jsx
+  lines: 1-42 (NoticeBadge — React 함수 컴포넌트 전체)
+@expansion temperature=0.2 model=agent/claude template=estreux/v0.0.1
+@targets estreuv
+
+@state
+count       : number = 0      # 미확인 알림 수 (React prop count)
+max         : number = 99     # 캡 상한 — 초과 시 "N+" 표기 (React prop max)
+autoRestore : number = 0      # ms. 0 이 아니면 dismiss 후 이 시간 뒤 자동 복원 (React prop autoRestore)
+dismissed   : boolean = false # 사용자가 배지를 눌러 숨겼는지 (React useState dismissed)
+
+@behavior
+visible : count > 0 이고 dismissed 아님 — 아니면 아무것도 렌더하지 않는다(React 의 return null 등가).
+label   : count 가 max 초과면 `${max}+`, 아니면 그대로 문자열.
+dismiss : 배지 클릭 — dismissed=true 로 숨기고 `dismiss` CustomEvent(detail={count})를 dispatch (React 의 onDismiss 콜백 prop 등가, estreuv 는 event-up 컨벤션).
+restoreTimer : dismissed 가 true 가 되고 autoRestore>0 이면 setTimeout 으로 autoRestore ms 후 dismissed=false 복원. dismissed/autoRestore 변경·disconnect 시 기존 타이머 clear(React useEffect cleanup 등가 — 타이머 누수 금지).
+lifecycle : EstreUI 8훅 placeholder 함유(EstreUVElement 계약). onHide/onClose/onRelease 에서 restoreTimer clear(비가시 자원 회수), onShow 에서 dismissed 상태면 타이머 재개.
+
+@render
+단일 인라인 배지 span — 최소폭 20px·패딩 2px 6px·라운드 10px·배경 적색(#e5484d)·흰 굵은 12px 글자·가운데 정렬·포인터 커서. role="status"·title="미확인 N건". visible 아닐 때 빈 렌더. 스타일은 shadow DOM static styles, 배경·전경은 CSS 커스텀 프로퍼티(--nb-bg·--nb-fg)로 오버라이드 가능.

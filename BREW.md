@@ -24,6 +24,26 @@
 ## 증류 (distill — 코드 → `.eux`)
 기존 검증 코드를 `.eux` 로 **역추출**. brew(신규 생성)보다 **검증된 동작 보존 + `.eux` 표현력을 실제 코드로 시험**하는 데 적합(운영 중 자산 — 예: 라이브보드). 에이전트가 코드를 읽어 `@component`/`@intent`/`@state`/`@behavior`/`@render`/`@persist` 명세를 작성하고, brew 라운드트립(증류→brew→drift)으로 표현력·일관성을 검증한다. 증류 중 발견되는 부족분(provider·target·표현력)은 EstreUX 를 그 자리에서 보강(dogfooding).
 
+## 마이그레이션 경로 — 타 프레임워크 → EstreUI/UV (distill 응용)
+
+distill 은 **target-무관**이므로 원본이 React/Vue 등 타 프레임워크여도 경로는 동일하다: **타 fw 코드 → `.eux` distill → estreui/estreuv brew**. `.eux` 가 프레임워크 중립 명세라서 원본 관용구는 증류 시점에 의도로 환원되고, brew 가 타깃 관용구로 재구현한다.
+
+관용구 매핑 (React → estreuv 기준, 실증 1호 `examples/react-notice-badge.eux`):
+
+| React 원본 | `.eux` 명세 | estreuv brew 산출 |
+| --- | --- | --- |
+| props (+default) | `@state` 항목 (type·default) | reactive `properties` |
+| `useState` | `@state` 내부 상태 항목 | reactive internal state (`state: true`) |
+| `useEffect` + cleanup | `@behavior` 의 반응 서술 + 자원 회수 조건 | `updated()` 반응 + 타이머/리스너 lifecycle 제어 |
+| `return null` 조건부 | `@behavior` visible 조건 | `render()` 분기 (빈 렌더) |
+| 콜백 prop (`onX`) | `@behavior` 의 이벤트 통지 서술 | `CustomEvent` event-up |
+| JSX + inline style | `@render` 자연어 | lit-html + shadow DOM `static styles` |
+
+적용 지침:
+- **컴포넌트 단위 점진 마이그레이션**이 경로다 — 대형 React/Vue SPA 의 일괄 전환은 여전히 비용 리스크([adoption 검토](adoption/estre-stack-adoption-review.md) 분류 유지). 위젯·페이지 구성물부터 하나씩 distill→brew 하고, 앱 셸 전환은 별도 판단.
+- 증류 시 원본을 `@source` 로 추적하고(마이그레이션 감사 경로), 원본 파일은 `examples/migration-samples/` 처럼 참조 가능한 위치에 보존한다.
+- 원본의 프레임워크 종속 관용구(hooks 규칙·context 등)는 명세로 올리지 말고 **의도로 환원**해서 적는다 — 그래야 estreui(클래스/jQuery)·estreuv(Lit) 어느 타깃으로도 brew 된다.
+
 ## 시드 3티어 증류 (EstreGenesis 정렬)
 한 컴포넌트를 EstreGenesis 시드의 3티어에 맞춰 3 수준으로 증류해 전달한다:
 - **러프(rough)**: `@intent` + 핵심 `@state`/`@behavior` 골자 — 빠른 의도 전달.
