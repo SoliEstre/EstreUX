@@ -1,6 +1,7 @@
-# Reverse Sync 판정 규격 (B3) — draft v0.1
+# Reverse Sync 판정 규격 (B3) — v0.2
 
-> **상태**: DRAFT v0.1 (2026-07-04) — 허브 작성, EG 검토 대기 (REQ-1 협의 스레드)
+> **상태**: v0.2 확정 (2026-07-04) — EG 검토 회신(4 포인트 전부 동의) 반영. e2e 파일럿으로 캘리브레이션 후 v1.0
+
 > **입력**: EG REQ-1 검토서 v0.1(2026-07-04, B3×P3/P4 접속 설계 — 허브 전체 수용) + [eux-format v1.2 §2.6/§2.7](eux-format-v1.md) + PM 009 B3(본질결정 #6)
 > **목적**: 결과 코드 수정 → `.eux` 갱신(reverse sync)의 **판정 파이프라인과 수용 기준**을 규격화한다. PM 009 성공 기준 "sync 정확도 >90%"의 조작적 정의가 본 문서다.
 
@@ -31,14 +32,15 @@ code edit → 역-distill 후보 .eux'
 | --- | --- | --- |
 | **soft-accept** | hard-fail == 0 **∧** accuracy ≥ 0.9 | `.eux'` 채택 + **사람 리뷰 큐** 등재 (자동 확정 아님) |
 | **reject** | hard-fail ≥ 1 **∨** accuracy < 0.9 | 역반영 폐기, 코드 변경자에게 사유 반환 |
-| **contract-change proposal** | protected clause 자체의 수정이 *의도된* 스펙 진화일 때 | 자동갱신 금지 — **human-gate** 로 분리 상정(제안서 형태로 사람 결정) |
+| **contract-change proposal** | protected clause 수정 + **명시 선언 신호 존재** 시에만 | 자동갱신 금지 — **human-gate** 로 분리(제안서 형태로 사람 결정) |
 
 - **hard-fail class**: `@hazards` 연계 clause(integrity/credential — 예: revoke_persistence_first·dual_write_atomicity) 는 **1건 위반 = reject**. ">90%" 는 hard 0 전제의 soft 임계로만 유효하다.
+- **proposal 판별 신호** (EG 검토 개선 1): 정적 diff 만으론 reject(훼손)와 proposal(의도된 진화)이 동형이므로, 변경자의 **명시 선언**이 있을 때만 proposal 경로를 탄다 — `.eux'` 내 `declared-intent:` 블록(수정 clause 목록+사유) **또는** 커밋 트레일러 `Eux-Contract-Change: <clause-id...>`. **무선언 clause-수정은 기본 reject.**
 
 ## 4. 규격 파라미터
 
-- **clause 최소 밀도** (분모 희박 spec 과대평가 방지, REQ-1 r1): P3 격상 대상 `.eux` 는 `@ports.cmd` 당 `pre`/`post` ≥1 **또는** `@invariants` sub-section ≥2 를 충족해야 accuracy 판정 유효. 미달 spec 은 판정 불가(insufficient-denominator)로 표기 — reject 아님.
-- **가중치 w_s/w_d** (REQ-1 r4): 초기값 0.5/0.5 는 **임의값**이며 규범 아님 — B2 파일럿(num-keypad·toggle-block, `@invariants`/`@metamorphic` 시딩 완료 `349c4d0`) e2e 실측으로 캘리브레이션 후 본 절에 확정 기록한다.
+- **clause 최소 밀도** (분모 희박 spec 과대평가 방지, REQ-1 r1): P3 격상 대상 `.eux` 는 `@ports.cmd` 당 `pre`/`post` ≥1 **또는** `@invariants` sub-section ≥2 를 충족해야 accuracy 판정 유효. 미달 spec 은 판정 불가(**insufficient-denominator**)로 표기 — reject 아님. **후속 처리** (EG 검토 개선 2): insufficient-denominator 시 자동 갱신 금지 + **사람 리뷰 직행** — 판정 불가 ≠ 판정 통과.
+- **가중치 w_s/w_d** (REQ-1 r4): 초기값 0.5/0.5 는 **임의값**이며 규범 아님 — B2 파일럿(num-keypad·toggle-block, `@invariants`/`@metamorphic` 시딩 완료 `349c4d0`) e2e 실측으로 캘리브레이션 후 본 절에 확정 기록한다. **e2e 시 spec 별 분모 크기 분포도 기록** (EG 검토 개선 3) — v0.3+ 에서 절대 하한(총 protected clause ≥ N_min) 추가 여부를 실측 기반 재검토.
 - **UI 어댑테이션** (REQ-1 r2): UI 매크로류(캘린더 등)는 서버류와 property 성격이 달라 `@metamorphic` 에 **스냅샷 등가**(같은 상태 → 같은 렌더 구조) 패턴을 허용한다 — determinism 의 UI 특화형. 세부는 B2 3호(캘린더 전 단계)에서 실증 후 보강.
 
 ## 5. 소유 경계 (REQ-1 합의)
@@ -57,6 +59,12 @@ code edit → 역-distill 후보 .eux'
 - EG 측 대조군: `history-store.eux` (byte-identity·idempotency·mode-chain round-trip 최다 — REQ-1 지정).
 - 첫 e2e = 파일럿 산출물에 의도 변경 1건(계약 보존) + 파괴 변경 1건(clause 위반)을 가해 §3 판정이 각각 soft-accept/reject 로 갈리는지 검증.
 
+## 6b. 판정기 현황 (확인 질문 1 답)
+
+- **P3 정적 게이트** — `spike/drift-check.mjs --invariant` (P3c) **구현 완료**: 절 존재 + sub-section 일관성 + vocabulary 키워드 잔존 3중 검사. 허브 측 준비 = 완료.
+- **P4 동적 게이트** — `spike/p4-check.mjs` **P4a 구현 완료**(@metamorphic 추출 + fast-check property 골격 생성, fast-check 불요) + **P4b 구조 존재**(`--run`: `<component>.p4.mjs` anchor(GEN+relation) 로드 + fast-check 실행). EG 이관/확장 기반으로 사용 가능 — 잔여 = 컴포넌트별 P4b anchor 실작성 + 실행 검증(EG 소관).
+
 ## 7. 변경 이력
 
+- v0.2 (2026-07-04) — EG 검토 회신 반영 확정: §3 proposal 판별 신호(declared-intent 블록/커밋 트레일러, 무선언=기본 reject) · §4 insufficient-denominator 후속(자동 갱신 금지+사람 리뷰 직행) · §4 분모 분포 기록+N_min v0.3+ 재검토 · §6b 판정기 현황(P3c·P4a 기구현 — 확인 질문 1 답).
 - v0.1 (2026-07-04) — 초안. EG REQ-1 검토서 v0.1 수용 내용의 규격화(2단 게이트·3 outcome·밀도 기준·캘리브레이션 유보·소유 경계). EG 검토 요청 발신.
