@@ -1,0 +1,28 @@
+@component num-keypad
+@intent EstreUI 스톡 EstreNumKeypadHandle 의 EstreUV 재구현 — V3 대체 파일럿 1호 (2026-07-04 정렬 리뷰 P1-②). 외부 input(id 연결)에 숫자 입력을 공급하는 키패드 위젯. 원본은 사용자가 button 마크업을 전부 직접 작성하고 본체가 jQuery 로 결선하지만, 이 재구현은 표준 키패드 레이아웃을 shadow DOM 에 자체 렌더해 마크업이 `<num-keypad for="...">` 한 줄로 줄어든다. 원본의 입력 계약(길이 제한·자동 구분자·직접 입력 차단·BS 의 구분자 인지 삭제·ENTER keypress 13·change 이벤트)은 전부 보존 — 기존 EstreUI 앱의 input 소비 코드가 그대로 동작해야 한다.
+@source
+  file: ../../EstreUI.js/scripts/estreUi-handles.js
+  lines: 5340-5491 (EstreNumKeypadHandle — specifier `.num_keypad`, uis 레지스트리 estreUi-core.js:238)
+@expansion temperature=0.2 model=agent/claude template=estreux/v0.0.1
+@targets estreuv, pair
+
+@state
+for            : string = ""      # 연결할 외부 input 요소 id (원본 data-for 호환 — light DOM 에서 조회)
+limitLength    : number = 0       # 0=무제한. 초과 입력 차단 (원본 data-limit-length)
+autoDivider    : string = ""      # 자동 구분자 문자열, 예: "-" (원본 data-auto-divider)
+autoDividerPos : string = ""      # 구분자 자동 삽입 위치 콤마 목록, 예: "3,8" (원본 data-auto-divider-pos)
+preventDirect  : boolean = false  # true 면 input 직접 타이핑 차단 — focus 즉시 blur (원본 data-prevent-direct)
+withEnter      : boolean = false  # ENTER 행 표시 여부 (원본은 마크업 재량이던 것을 속성화)
+
+@behavior
+resolveInput : 연결 대상 input 을 document.getElementById(for) 로 찾는다(셀프 shadow 밖 light DOM). 없으면 콘솔 경고 후 키 비활성. for 변경 시 리스너를 옮겨 단다.
+pressNumber(n) : input.value 끝에 n 을 덧붙이고 change 이벤트를 dispatch. limitLength 초과가 되면 무시.
+autoDivide : input 의 input/paste/cut/change 시 — 길이가 limitLength 초과면 잘라내고, 길이가 autoDividerPos 의 위치와 일치하면 autoDivider 를 자동으로 덧붙인다(원본과 동일하게 외부 유래 입력에도 적용).
+pressClear : CLR — input.value 를 비우고 change dispatch.
+pressBackspace : BS — 끝 1자 삭제하되 끝이 autoDivider 로 끝나면 구분자 길이만큼 함께 삭제(원본 동작 보존). change dispatch.
+pressEnter : ENTER — input 에 keyCode 13 keypress 이벤트를 트리거(원본 호환 — 폼 제출 훅용).
+preventDirectGuard : preventDirect=true 면 input focus 시 preventDefault + 즉시 blur.
+lifecycle : EstreUI 8훅 placeholder 상시 함유(EstreUVElement 계약). onRelease/disconnectedCallback 에서 외부 input 리스너 해제(이중 안전망). 리스너 중복 부착 가드.
+
+@render
+shadow DOM 3열 그리드 키패드 — 1행 1·2·3 / 2행 4·5·6 / 3행 7·8·9 / 4행 CLR·0·BS. withEnter 면 하단에 풀폭 ENTER 행 추가. 버튼은 터치 타깃 최소 44px·큰 숫자·CLR/BS 는 보조색. CSS 커스텀 프로퍼티(--nk-gap·--nk-btn-bg·--nk-btn-fg·--nk-accent)로 호스트 테마 주입 가능. 다크모드는 프로퍼티 상속에 위임(자체 미디어쿼리 없음).
