@@ -1,0 +1,20 @@
+@component toggle-block
+@intent EstreUI 스톡 EstreToggleBlockHandle 의 EstreUV 재구현 — V3 대체 파일럿 2호 (PM 009 B2). 접기/펼치기 토글 블록: 헤더(또는 토글 버튼) 클릭으로 콘텐츠 접힘을 토글한다. 원본은 jQuery 로 `> button.toggle` 결선 + `data-collapsed`/부모 `data-content-collapsed` 속성만 갱신하고 접힘 표현은 외부 CSS 에 위임하지만, 이 재구현은 slot 기반 셀프 렌더(헤더 슬롯 + 콘텐츠 슬롯 + 접힘 트랜지션)로 마크업·CSS 부담을 흡수한다. 원본 계약 보존: 호스트 요소에 `data-collapsed`("1"/"0") 반영 유지(기존 CSS 셀렉터 호환) + 전역 스와이프 중(`window` 의 `data-on-swipe`="1" — EstreUI Swipe 인터랙션 가드) 클릭 무시.
+@source
+  file: ../../EstreUI.js/scripts/estreUi-handles.js
+  lines: 4520-4619 (EstreToggleBlockHandle — specifier `.toggle_block`)
+@expansion temperature=0.2 model=agent/claude template=estreux/v0.0.1
+@targets estreuv, pair
+
+@state
+collapsed : boolean = false  # 접힘 여부 (원본 data-collapsed="1" 등가, attribute 반영)
+label     : string = ""      # 헤더 텍스트 (header 슬롯 미사용 시 폴백)
+
+@behavior
+toggle : 헤더 클릭 — collapsed 반전. 단 전역 스와이프 가드: document.documentElement 또는 window 바인딩 요소의 `data-on-swipe` 가 "1" 이면 무시(원본 isOnSwipe 등가, EstreUI Swipe 와 공존).
+reflect : collapsed 변경 시 호스트 자신에 `data-collapsed` 속성("1"/"0")을 반영 — 기존 EstreUI CSS 셀렉터·외부 관찰 코드 호환. `toggle` CustomEvent(detail={collapsed}) 도 dispatch(원본의 부모 data-content-collapsed 연동을 event-up 으로 일반화 — pair 어댑터가 필요 시 부모 속성에 중계).
+setCollapsed(v) : 외부에서 접힘 상태를 지정하는 공개 메서드(command-in).
+lifecycle : EstreUI 8훅 placeholder 함유(EstreUVElement 계약). 타이머·외부 리스너 없음이라 자원 회수 불요.
+
+@render
+세로 스택 — 상단 헤더 행(기본: label 텍스트 + 우측 회전 화살표(▾, collapsed 시 -90° 회전, 0.2s 트랜지션), `slot="header"` 로 완전 교체 가능. 클릭 영역은 헤더 행 전체 + cursor:pointer) / 하단 콘텐츠 영역(기본 slot, collapsed 시 display:none — grid-template-rows 0fr/1fr 0.2s 트랜지션으로 부드럽게 접힘). CSS 커스텀 프로퍼티(--tb-header-bg·--tb-gap)로 테마 주입.

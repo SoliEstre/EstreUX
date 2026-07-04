@@ -67,6 +67,17 @@
 
 관찰: 산출(181L)이 원본(152L)보다 큰 것은 원본이 렌더를 사용자 마크업에 떠넘긴 반면 UV 재구현은 레이아웃·스타일을 흡수했기 때문 — 시스템 총소유(본체 코드+소비 마크업)는 감소. **본체에서 실제 152L 제거(deprecate)는 fw 파트 결정 게이트**(질문 002 회신 후) — 제거 전까지 X1 은 "대체 준비 완료" 상태의 측정.
 
+### 추가 실증 — 같은 날 (2026-07-04, 파일럿 2호 + B5)
+
+| 대상 | 원본 | spec | brew 산출 | X1 | drift |
+| --- | --- | --- | --- | --- | --- |
+| **파일럿 2호** `toggle-block` (EstreToggleBlockHandle, handles.js:4520-4619) | 100 L + 외부 CSS·버튼 마크업 | 20 L | estreuv 82 + pair 39 | **80% 절감** | 2/2 in-sync |
+| **B5 실증 1호** `notice-badge` (React 마이그레이션 — migration-samples/react-notice-badge.jsx) | 41 L (React hooks) | 23 L | estreuv 94 | 44% (경로 실증 목적) | 1/1 in-sync |
+
+- 파일럿 2호 특이점: 원본이 접힘 표현을 외부 CSS 에 위임하던 것을 slot 셀프 렌더로 흡수 + 원본 계약(host `data-collapsed` 반영·전역 스와이프 가드·부모 `data-content-collapsed` 는 pair 어댑터 중계) 보존.
+- B5 는 X1 지표보다 **경로 검증**(React 관용구 → `.eux` 의도 환원 → Lit 재구현)이 목적 — 매핑 표는 [BREW.md § 마이그레이션 경로](../BREW.md).
+- 휴리스틱 #1 보강: 소형·계약 명확 핸들(NumKeypad 82%·ToggleBlock 80%)이 인프라 supervisor 류(40%)보다 절감 폭 큼 — **V3 대체는 소형 핸들부터 순차가 측정상으로도 유리**.
+
 ## 잔여 (Phase B 게이트의 마지막 조각)
 
 - ~~**① 라이브보드 11 spec의 drift-check 게이트 편입**~~ — ✅ **완료 (2026-07-03)**: dist 11 산출 provenance 완비 확인·전수 PASS·허브 pre-commit `euxDriftGate` 편입(negative 테스트 포함 3-way 검증). X3 실측 활성화.
