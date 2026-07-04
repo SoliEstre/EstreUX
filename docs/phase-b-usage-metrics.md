@@ -52,6 +52,21 @@
 2. **drift 방어는 게이트 편입이 전부** — 게이트 안 0건 vs 게이트 밖 측정불가. 새 증류는 dist 생성 시점에 drift-check 편입을 기본값으로.
 3. **agent provider(직접 brew)가 기본 경로로 충분** — 16 spec 전부 agent brew로 산출, 라이브 LLM(openai-compatible) 실측은 잔여 항목(아래).
 
+## 측정 스냅샷 — 2026-07-04 (Phase B B2 · V3 대체 파일럿 1호)
+
+허브 [UI·UV·UX 정렬 리뷰](../../EstreUF%20common%20workspace/reports/2026-07-04-ui-uv-ux-alignment-review.md)가 편입한 **B2(EstreUI 매크로 구현→EstreUV 대체)** 의 첫 실증 — EstreUI 스톡 `EstreNumKeypadHandle` 재구현 (`examples/num-keypad.eux`, 커밋 5426bdc).
+
+| 지표 | 값 | 비고 |
+| --- | --- | --- |
+| 원본 (본체 하드코딩) | 152 L (estreUi-handles.js:5340-5491) + 소비자 버튼 마크업 전체 | jQuery, DOM 프로토타입 없음(마크업 사용자 부담) |
+| spec | 28 L | @source 역증류 추적 포함 |
+| brew 산출 | estreuv 181 L + pair 33 L (agent brew) | 스타일·표준 레이아웃 shadow DOM 렌더 포함 |
+| **X1 (유지 표면)** | **28 L / 152 L ≈ 82% 절감** | 지금까지 최고치 — 소형·계약 명확 핸들이 증류 최적점 |
+| 소비 표면 | 버튼 마크업 전체 → `<num-keypad for="...">` 1줄 | V3 볼륨 이득의 소비자 측 |
+| drift | in-sync 2/2, pre-commit 전수 PASS | 신규 spec 즉시 게이트 편입 (휴리스틱 #2 준수) |
+
+관찰: 산출(181L)이 원본(152L)보다 큰 것은 원본이 렌더를 사용자 마크업에 떠넘긴 반면 UV 재구현은 레이아웃·스타일을 흡수했기 때문 — 시스템 총소유(본체 코드+소비 마크업)는 감소. **본체에서 실제 152L 제거(deprecate)는 fw 파트 결정 게이트**(질문 002 회신 후) — 제거 전까지 X1 은 "대체 준비 완료" 상태의 측정.
+
 ## 잔여 (Phase B 게이트의 마지막 조각)
 
 - ~~**① 라이브보드 11 spec의 drift-check 게이트 편입**~~ — ✅ **완료 (2026-07-03)**: dist 11 산출 provenance 완비 확인·전수 PASS·허브 pre-commit `euxDriftGate` 편입(negative 테스트 포함 3-way 검증). X3 실측 활성화.
