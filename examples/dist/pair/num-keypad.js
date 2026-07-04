@@ -1,5 +1,5 @@
 // ┌─ estreux:expanded ──────────────────────────────────────────────
-// │ source : num-keypad.eux  (sha256:71a506d8a93e)
+// │ source : num-keypad.eux  (sha256:ab6e1e98564f)
 // │ profile: ui-component
 // │ target : pair   provider : agent
 // │ trio   : temp=0.2 model=agent/claude template=estreux/v0.0.1

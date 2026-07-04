@@ -1,5 +1,5 @@
 // ┌─ estreux:expanded ──────────────────────────────────────────────
-// │ source : toggle-block.eux  (sha256:59987fc7314e)
+// │ source : toggle-block.eux  (sha256:e6dd26e11dff)
 // │ profile: ui-component
 // │ target : pair   provider : agent
 // │ trio   : temp=0.2 model=agent/claude template=estreux/v0.0.1

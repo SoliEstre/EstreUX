@@ -18,3 +18,20 @@ lifecycle : EstreUI 8훅 placeholder 함유(EstreUVElement 계약). 타이머·�
 
 @render
 세로 스택 — 상단 헤더 행(기본: label 텍스트 + 우측 회전 화살표(▾, collapsed 시 -90° 회전, 0.2s 트랜지션), `slot="header"` 로 완전 교체 가능. 클릭 영역은 헤더 행 전체 + cursor:pointer) / 하단 콘텐츠 영역(기본 slot, collapsed 시 display:none — grid-template-rows 0fr/1fr 0.2s 트랜지션으로 부드럽게 접힘). CSS 커스텀 프로퍼티(--tb-header-bg·--tb-gap)로 테마 주입.
+
+@invariants
+  state:
+    - member-of: collapsed 는 {true, false}, 호스트 data-collapsed 속성은 {"1", "0"} — 둘은 항상 동기 (reflect 계약, 기존 EstreUI CSS 셀렉터 호환의 근거)
+  temporal:
+    - at-most-once: collapsed 값 전이 1회당 data-collapsed 반영과 toggle CustomEvent dispatch 가 각각 정확히 1회 (같은 값 재지정은 재발화 없음)
+  causality:
+    - 전역 스와이프 상태(data-on-swipe="1")가 클릭 토글 무시를 implies — 스와이프 가드가 토글 판정에 precedes (EstreUI Swipe 공존 계약)
+    - setCollapsed(v) 의 실변경이 data-collapsed 반영 ∧ toggle 이벤트에 precedes
+
+@metamorphic
+  round_trip:
+    - toggle 2회(collapsed → !collapsed → collapsed) 후 collapsed·data-collapsed 가 원상 (왕복 동등)
+  idempotency:
+    - setCollapsed(v) 같은 v 로 1회 == N회 — 속성·이벤트 재발화 없음
+  determinism:
+    - 같은 collapsed 값에서 렌더 구조(헤더·화살표 각도·body 접힘 상태) 동일

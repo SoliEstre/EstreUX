@@ -26,3 +26,20 @@ lifecycle : EstreUI 8훅 placeholder 상시 함유(EstreUVElement 계약). onRel
 
 @render
 shadow DOM 3열 그리드 키패드 — 1행 1·2·3 / 2행 4·5·6 / 3행 7·8·9 / 4행 CLR·0·BS. withEnter 면 하단에 풀폭 ENTER 행 추가. 버튼은 터치 타깃 최소 44px·큰 숫자·CLR/BS 는 보조색. CSS 커스텀 프로퍼티(--nk-gap·--nk-btn-bg·--nk-btn-fg·--nk-accent)로 호스트 테마 주입 가능. 다크모드는 프로퍼티 상속에 위임(자체 미디어쿼리 없음).
+
+@invariants
+  state:
+    - bounded: 연결 input 의 값 길이는 limitLength(>0 설정 시)를 넘지 않음 (|input.value| ≤ limitLength — 키패드 입력·외부 유래 입력 공통)
+    - member-of: 외부 input 리스너 부착 상태는 {wired, unwired} 중 하나 — 중복 부착 없음 (가드 필수)
+  temporal:
+    - idempotent: resolveInput 은 같은 for 대상에 1회/N회 호출 결과가 동일 (리스너 집합 불변)
+  causality:
+    - 키패드에 의한 값 실변경이 change 이벤트 dispatch 에 precedes — 변경이 무시되면(길이 초과·input 부재) dispatch 없음
+    - onRelease/disconnect 가 외부 input 리스너 전해제를 implies (페이지 release 후 잔존 리스너 0)
+
+@metamorphic
+  idempotency:
+    - resolveInput(같은 for) 1회 == N회 (부착 리스너 집합 동일)
+    - pressClear 1회 == N회 — input.value 결과 동일 ("")
+  determinism:
+    - 같은 (value, limitLength, autoDivider, autoDividerPos) 입력에서 autoDivide 보정 결과 동일
