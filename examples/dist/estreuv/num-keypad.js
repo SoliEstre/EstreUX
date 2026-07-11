@@ -45,8 +45,6 @@ export class NumKeypad extends EstreUVElement {
     this.autoDividerPos = '';
     this.preventDirect = false;
     this.withEnter = false;
-    this.#onInput = this.#onInput.bind(this);
-    this.#onFocus = this.#onFocus.bind(this);
   }
 
   #input = null;        // 연결된 외부 input (light DOM)
@@ -108,14 +106,15 @@ export class NumKeypad extends EstreUVElement {
   }
 
   // ── 원본 계약 보존 동작 ────────────────────────────────────────
-  #onFocus(e) {
+  // bound private arrow field — 인스턴스 바인딩 고정 (private 메서드 constructor 재대입은 TypeError)
+  #onFocus = (e) => {
     if (!this.preventDirect) return;
     e.preventDefault();
     e.target.blur();
-  }
+  };
 
   // 외부 유래 입력에도 길이 제한·자동 구분자 적용 (원본 setEvent input 리스너와 동일)
-  #onInput() {
+  #onInput = () => {
     const input = this.#input;
     if (!input) return;
     const value = input.value;
@@ -126,7 +125,7 @@ export class NumKeypad extends EstreUVElement {
     if (this.autoDivider) {
       for (const pos of this.#posList) if (pos === value.length) input.value += this.autoDivider;
     }
-  }
+  };
 
   #emitChange() {
     this.#input?.dispatchEvent(new Event('change'));

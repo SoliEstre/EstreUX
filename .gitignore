@@ -4,3 +4,7 @@ node_modules/
 .playwright-mcp/
 .claude/settings.local.json
 # spike/dist/ 는 PoC 증거라 추적함 (Phase B 부터는 빌드 아티팩트로 gitignore 검토)
+# P4 e2e 러닝 환경 로컬 산출물 (examples/package.json 의 devDeps 재현으로 충분)
+examples/.e2e-tmp/
+examples/*.tgz
+examples/package-lock.json

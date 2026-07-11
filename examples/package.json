@@ -1,0 +1,11 @@
+{
+  "name": "estreux-examples-p4-env",
+  "private": true,
+  "description": "P4 동적 게이트(p4-check --run) 러닝 환경 — reverse-sync-spec §3.4 UI 러닝 환경(허브 소유). 런타임 deps-0 유지: 전부 devDependencies, node_modules·tarball 비추적.",
+  "devDependencies": {
+    "estreuv": "file:./estreuv-1.0.0.tgz",
+    "fast-check": "^3.23.2",
+    "happy-dom": "^15.11.7",
+    "lit": "^3.3.0"
+  }
+}

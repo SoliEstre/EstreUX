@@ -46,7 +46,7 @@ function extractProvider(head) {
 //   machine : @machine states 리터럴 + dispatch 진입점 (상태머신 · 중; ports 중복 제외)
 //   @state 필드는 일반 식별자 false-match 위험으로 제외 (P3 AST 영역).
 function extractContractNames(raw) {
-  const lines = raw.split('\n');
+  const lines = raw.split(/\r?\n/);   // CRLF-safe (p4-check R1 발견과 동형 예방)
   const ADAPTER = new Set(['runtime', 'roles', 'wire', 'routing', 'delivery', 'redaction', 'operation_discipline']);
   const buckets = { ports: [], behavior: [], machine: [], contract: [] };
   let section = null;
@@ -166,7 +166,7 @@ for (const id of targets) {
   //   invariant 는 본질이 행동이라 정적 grep 으로 위반은 못 잡음(P4 dynamic). 정적은 "본질 누락" 만 검출.
   if (invariantMode) {
     let inInv = false, invBlock = '';
-    for (const l of raw.split('\n')) {
+    for (const l of raw.split(/\r?\n/)) {   // CRLF-safe (p4-check R1 발견과 동형 예방)
       if (/^@invariants\b/.test(l)) { inInv = true; continue; }
       if (/^@/.test(l)) { inInv = false; continue; }
       if (inInv) invBlock += l + '\n';

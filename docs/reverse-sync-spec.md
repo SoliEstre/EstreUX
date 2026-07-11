@@ -1,6 +1,6 @@
 # Reverse Sync 판정 규격 (B3) — v0.2
 
-> **상태**: v0.2 확정 (2026-07-04) — EG 검토 회신(4 포인트 전부 동의) 반영. e2e 파일럿으로 캘리브레이션 후 v1.0
+> **상태**: v0.2.1 (2026-07-11) — **e2e 1차 완료** (reject/soft-accept 분기 확인·R1 cross-check, [기록](reverse-sync-e2e-001.md)). 캘리브레이션 확정은 P3c 정리 후 2차 e2e → v1.0
 
 > **입력**: EG REQ-1 검토서 v0.1(2026-07-04, B3×P3/P4 접속 설계 — 허브 전체 수용) + [eux-format v1.2 §2.6/§2.7](eux-format-v1.md) + PM 009 B3(본질결정 #6)
 > **목적**: 결과 코드 수정 → `.eux` 갱신(reverse sync)의 **판정 파이프라인과 수용 기준**을 규격화한다. PM 009 성공 기준 "sync 정확도 >90%"의 조작적 정의가 본 문서다.
@@ -53,11 +53,11 @@ code edit → 역-distill 후보 .eux'
 | P4 metamorphic runner (p4-check, fast-check 류) | EG |
 | 게이트 정책 (본 문서 §3) | 허브 주도 · EG 검토 |
 
-## 6. e2e 파일럿 (진입 준비 완료)
+## 6. e2e 파일럿 — **1차 완료 (2026-07-11)**
 
-- 허브 측: `examples/num-keypad.eux`(@invariants 5·@metamorphic 3) · `examples/toggle-block.eux`(4·3) — 시딩 완료, drift in-sync, p4-check 파싱 확인.
-- EG 측 대조군: `history-store.eux` (byte-identity·idempotency·mode-chain round-trip 최다 — REQ-1 지정).
-- 첫 e2e = 파일럿 산출물에 의도 변경 1건(계약 보존) + 파괴 변경 1건(clause 위반)을 가해 §3 판정이 각각 soft-accept/reject 로 갈리는지 검증.
+- 허브 측: `examples/num-keypad.eux`(@invariants 5·@metamorphic 3) · `examples/toggle-block.eux`(4·3) — 시딩 완료, drift in-sync, p4-check 파싱 확인. **P4b anchor 2종 = EG 작성·전달 (examples/ 배치)**.
+- EG 측 대조군: `history-store.eux` (byte-identity·idempotency·mode-chain round-trip 최다 — REQ-1 지정). anchor = EG v2.5.141.
+- 첫 e2e = 파일럿 산출물에 의도 변경 1건(계약 보존) + 파괴 변경 1건(clause 위반)을 가해 §3 판정이 각각 soft-accept/reject 로 갈리는지 검증. → **분기 확인 완료 + determinism cross-check(R1) 재현 — 실행 기록·발견 4건·분모 분포·캘리브레이션 1차 입력은 [reverse-sync-e2e-001.md](reverse-sync-e2e-001.md)**. w_s/w_d 확정은 P3c vocab 스테이지 정리 후 2차 e2e 로 유보.
 
 ## 6b. 판정기 현황 (확인 질문 1 답)
 
@@ -66,5 +66,6 @@ code edit → 역-distill 후보 .eux'
 
 ## 7. 변경 이력
 
+- v0.2.1 (2026-07-11) — §6 e2e 1차 완료 반영: reject/soft-accept 분기 확인·R1 cross-check 재현·발견 4건([e2e-001](reverse-sync-e2e-001.md)). 러너 CRLF-safe 수정(p4-check·drift-check). w_s/w_d 확정은 2차 e2e 유보.
 - v0.2 (2026-07-04) — EG 검토 회신 반영 확정: §3 proposal 판별 신호(declared-intent 블록/커밋 트레일러, 무선언=기본 reject) · §4 insufficient-denominator 후속(자동 갱신 금지+사람 리뷰 직행) · §4 분모 분포 기록+N_min v0.3+ 재검토 · §6b 판정기 현황(P3c·P4a 기구현 — 확인 질문 1 답).
 - v0.1 (2026-07-04) — 초안. EG REQ-1 검토서 v0.1 수용 내용의 규격화(2단 게이트·3 outcome·밀도 기준·캘리브레이션 유보·소유 경계). EG 검토 요청 발신.

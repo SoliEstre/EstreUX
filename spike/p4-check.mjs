@@ -30,7 +30,7 @@ const comp = (raw.match(/^@component\s+(.+)$/m) || [])[1]?.trim() || basename(eu
 // @metamorphic 절 추출 (P3b parseEux FREETEXT 와 동형 — `- <kind>: <desc>` 항목)
 let inMeta = false, curKind = null;
 const props = [];
-for (const l of raw.split('\n')) {
+for (const l of raw.split(/\r?\n/)) {   // CRLF-safe — `.` 가 \r 을 매치 안 해 `(.+)$` 절 추출이 CRLF spec 에서 전멸 (e2e R1 발견)
   if (/^@metamorphic\b/.test(l)) { inMeta = true; curKind = null; continue; }
   if (/^@/.test(l)) { inMeta = false; continue; }
   if (!inMeta) continue;
