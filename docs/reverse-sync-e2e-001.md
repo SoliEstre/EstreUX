@@ -43,8 +43,17 @@
 
 이번 e2e 에서 실질 분별력은 전부 P4(동적) — 결함 검출(발견 1)·파괴 분기(R2)·의도 통과(R3 v2). P3 는 sub-section 일관성 검사만 유효했고 vocab 검사는 false-fail(발견 4). 초기값 0.5/0.5 대비 **w_d 상향이 실측 방향**이나, P3c 스테이지 정리(발견 4 해소) 후 재평가가 순서. 판정: **캘리브레이션 확정은 2차 e2e(P3c 정리 반영) 로 유보**.
 
+## EG 대조 (2026-07-11, 당일 회신)
+
+**매트릭스 전항 EG 기록과 일치 — 1차 왕복 시험 상호 확인 종결** (§6 판정 분기 요건 실측 폐쇄). 발견별 합의:
+
+- **f3 (러너 CRLF)**: EG 측 러너 사본 없음(in-place 직실행 — `1df1fe0` 이 곧 EG 실행 경로). 잠복 경위 실측 확인: EG 워크트리 .eux 도 autocrlf 로 CRLF 물질화됐었으나 실행들이 이전 LF 상태를 우연히 탔음. **예방축**: EG v2.5.142 `.gitattributes *.eux text eol=lf` + 허브 미러(본 커밋) — 사고 클래스 원천 차단.
+- **f4 (P3c vocab)**: **(b) 스테이지 구분으로 확정** — vocab-잔존 grep 의 정의역은 brew-with-invariants 산출물이므로 시딩 경로 적용은 정의역 밖(구조적 false-fail 당연). 임시조치로 (c) warn 강등 수용 가능하나 종착은 (b). w_s/w_d 유보 동의.
+- **f2 (happy-dom)**: 환경-기인 거짓 양성 클래스 실존·§3 구분 필요 동의. anchor 대응 — 차기 개정 시 규약 주석에 "top-level child expr 회피(래핑)" 명기 + 근본 해소는 Playwright 승격(anchor property 층 무수정 재사용).
+- **N_min**: 소형 UI 분모 3(±33%p) 이 N_min 필요성을 지지한다는 판단 동의.
+
 ## 잔여
 
-- [ ] 발견 2: anchor 작성 규약 반영 + (중기) Playwright 실브라우저 승격 검토
-- [ ] 발견 4: P3c vocab 검사 스테이지 정리 → 2차 e2e → w_s/w_d 확정 (§4 에 기록)
+- [ ] 발견 4 → **(b) 구현**: P3c vocab 검사를 brew-with-invariants 스테이지로 한정 (허브, drift-check) → 2차 e2e → w_s/w_d 확정 (§4 에 기록)
+- [ ] 발견 2: anchor 규약 주석 반영(EG, 차기 개정) + (중기) Playwright 실브라우저 승격 검토
 - [ ] Mode-B(sqlite dual) 절 3종: EG full 구현 랜딩 시 projection → 실절 실행 승격 (EG 소관)

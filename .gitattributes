@@ -1,0 +1,2 @@
+# .eux spec 은 LF 고정 — CRLF 물질화 시 러너 절 추출 전멸 사고 클래스 차단 (e2e-001 f3, EG v2.5.142 와 동일 예방축)
+*.eux text eol=lf
