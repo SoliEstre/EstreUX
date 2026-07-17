@@ -164,6 +164,8 @@ for (const id of targets) {
 
   // Phase C: --invariant 행동 계약 정적 게이트 (P3c) — EG 협의 Q2: 절 존재 + sub-section 일관성 + vocabulary 키워드 잔존.
   //   invariant 는 본질이 행동이라 정적 grep 으로 위반은 못 잡음(P4 dynamic). 정적은 "본질 누락" 만 검출.
+  //   vocab-잔존 검사의 정의역 = brew-with-invariants 산출물(dist 헤더 `invariants: brewed` 마커 자기선언)만.
+  //   시딩(코드 무영향 메타 라운드트립) 경로 dist 는 정의역 밖 → skip (e2e-001 발견 4 → f4=(b) 스테이지 구분).
   if (invariantMode) {
     let inInv = false, invBlock = '';
     for (const l of raw.split(/\r?\n/)) {   // CRLF-safe (p4-check R1 발견과 동형 예방)
@@ -181,9 +183,14 @@ for (const id of targets) {
       const declared = VOCAB.filter(k => invBlock.includes(k));
       if (declared.length === 0) { console.log(`    invariant  ✗ 권장 vocabulary 키워드 없음 (prose 만 — 정적 grep 불가)`); drift++; }
       else {
-        const surviving = declared.filter(k => head.includes(k));
-        console.log(`    invariant  vocab ${surviving.length}/${declared.length} 잔존: ${surviving.slice(0, 8).join('·')}${surviving.length > 8 ? '…' : ''}`);
-        if (surviving.length === 0) { console.log(`    invariant  ✗ 선언 vocabulary 전부 산출물 누락 — 본질 손실(BlockerManifest §13.20-shaped)`); drift++; }
+        const invBrewed = /^\/\/\s*│\s*invariants\s*:\s*brewed\b/m.test(head);   // provenance 헤더 마커 (본문 우연 매치 차단)
+        if (!invBrewed) {
+          console.log(`    invariant  vocab (시딩 경로 dist — brew-with-invariants 산출물 아님, 잔존 검사 정의역 밖 skip)`);
+        } else {
+          const surviving = declared.filter(k => head.includes(k));
+          console.log(`    invariant  vocab ${surviving.length}/${declared.length} 잔존: ${surviving.slice(0, 8).join('·')}${surviving.length > 8 ? '…' : ''}`);
+          if (surviving.length === 0) { console.log(`    invariant  ✗ 선언 vocabulary 전부 산출물 누락 — 본질 손실(BlockerManifest §13.20-shaped)`); drift++; }
+        }
       }
     }
   }
