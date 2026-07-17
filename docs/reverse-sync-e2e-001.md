@@ -54,6 +54,6 @@
 
 ## 잔여
 
-- [x] 발견 4 → **(b) 구현 완료 (2026-07-17)**: P3c vocab 검사를 brew-with-invariants 스테이지로 한정 — dist 헤더 `invariants: brewed` 마커 자기선언 규약([spec §6b](reverse-sync-spec.md)), 마커 없는 시딩 dist 는 정의역 밖 skip. 검증: 시딩 파일럿 2종 false-fail 해소(exit 0) + 합성 마커 케이스 양/음성. **잔여 = 2차 e2e → w_s/w_d 확정 (§4 에 기록)**
+- [x] 발견 4 → **(b) 구현 완료 (2026-07-17)**: P3c vocab 검사를 brew-with-invariants 스테이지로 한정 — dist 헤더 `invariants: brewed` 마커 자기선언 규약([spec §6b](reverse-sync-spec.md)), 마커 없는 시딩 dist 는 정의역 밖 skip. 검증: 시딩 파일럿 2종 false-fail 해소(exit 0) + 합성 마커 케이스 양/음성. → **2차 e2e 당일 완료 ([e2e-002](reverse-sync-e2e-002.md)) — w_s/w_d = 0.3/0.7 제안, EG 대조 게이트**
 - [ ] 발견 2: anchor 규약 주석 반영(EG, 차기 개정) + (중기) Playwright 실브라우저 승격 검토
 - [ ] Mode-B(sqlite dual) 절 3종: EG full 구현 랜딩 시 projection → 실절 실행 승격 (EG 소관)

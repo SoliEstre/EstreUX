@@ -3,6 +3,7 @@
 // │ profile: ui-component
 // │ target : pair   provider : agent
 // │ trio   : temp=0.2 model=agent/claude template=estreux/v0.0.1
+// │ invariants: brewed
 // │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run brew` 로 재생성 (drift-check 감시).
 // └─────────────────────────────────────────────────────────────────
 import './../estreuv/toggle-block.js';
@@ -12,6 +13,11 @@ import './../estreuv/toggle-block.js';
  * 원본 스톡 핸들 마크업(.toggle_block + button.toggle + 외부 CSS) 자리를 대체하는 V3 패턴.
  * 원본의 부모 data-content-collapsed 연동은 toggle 이벤트 중계로 재현 — 기존
  * EstreUI CSS 셀렉터(부모 접힘 표현)가 그대로 동작한다.
+ *
+ * @invariants (brewed — spec @invariants 각인, micro 쪽 계약의 pair 중계면)
+ * - state/member-of: 중계 대상 부모 data-content-collapsed ∈ {"1","0"} — micro 의 collapsed 와 동기
+ * - temporal/at-most-once: toggle 이벤트 1회당 부모 반영 정확히 1회 (micro 의 재발화-없음 계약을 그대로 상속)
+ * - causality: micro 의 toggle dispatch 가 부모 중계에 precedes — data-on-swipe 가드는 micro 가 implies 처리
  *
  * @param {HTMLElement} host   마운트 지점 (원본 .toggle_block 있던 자리)
  * @param {object} [opts]      { label, collapsed, syncParent=true }

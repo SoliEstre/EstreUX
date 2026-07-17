@@ -3,6 +3,7 @@
 // │ profile: ui-component
 // │ target : estreuv   provider : agent
 // │ trio   : temp=0.2 model=agent/claude template=estreux/v0.0.1
+// │ invariants: brewed
 // │ ⚠ 자동 생성물 — 직접 수정 금지. `npm run brew` 로 재생성 (drift-check 감시).
 // └─────────────────────────────────────────────────────────────────
 import { EstreUVElement } from 'estreuv';
@@ -14,6 +15,12 @@ import { html, css } from 'lit';
  * 원본 계약 보존: 호스트에 data-collapsed("1"/"0") 반영(기존 CSS 셀렉터 호환) +
  * 전역 스와이프 가드(data-on-swipe="1" 중 클릭 무시, EstreUI Swipe 공존).
  * 원본이 외부 CSS 에 위임하던 접힘 표현은 slot 기반 셀프 렌더로 흡수.
+ *
+ * @invariants (brewed — spec @invariants 각인)
+ * - state/member-of: collapsed ∈ {true,false} ↔ 호스트 data-collapsed ∈ {"1","0"} 항상 동기 (reflect 계약)
+ * - temporal/at-most-once: collapsed 전이 1회당 data-collapsed 반영·toggle dispatch 각 정확히 1회 (동일 값 재지정 재발화 없음)
+ * - causality: data-on-swipe="1" 은 클릭 토글 무시를 implies — 스와이프 가드가 토글 판정에 precedes
+ * - causality: setCollapsed(v) 실변경이 data-collapsed 반영 ∧ toggle 이벤트에 precedes
  */
 export class ToggleBlock extends EstreUVElement {
   static properties = {

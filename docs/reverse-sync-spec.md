@@ -1,6 +1,6 @@
 # Reverse Sync 판정 규격 (B3) — v0.2
 
-> **상태**: v0.2.2 (2026-07-17) — **e2e 1차 완료 + P3c 스테이지 정리 완료** (reject/soft-accept 분기 확인·R1 cross-check, [기록](reverse-sync-e2e-001.md) · vocab-잔존 정의역 = `invariants: brewed` 마커 dist 한정). 캘리브레이션 확정은 2차 e2e → v1.0
+> **상태**: v0.2.3 (2026-07-17) — **e2e 2차 완료** ([기록](reverse-sync-e2e-002.md): S1 P3 양성·S2 P3 검출 첫 실증·S3 P4 회귀 1차 동일 재현 — P3/P4 실패 클래스 직교 확인). **w_s/w_d = 0.3/0.7 제안** — EG 대조 합의 시 §4 확정 기록 → v1.0 판단
 
 > **입력**: EG REQ-1 검토서 v0.1(2026-07-04, B3×P3/P4 접속 설계 — 허브 전체 수용) + [eux-format v1.2 §2.6/§2.7](eux-format-v1.md) + PM 009 B3(본질결정 #6)
 > **목적**: 결과 코드 수정 → `.eux` 갱신(reverse sync)의 **판정 파이프라인과 수용 기준**을 규격화한다. PM 009 성공 기준 "sync 정확도 >90%"의 조작적 정의가 본 문서다.
@@ -67,6 +67,7 @@ code edit → 역-distill 후보 .eux'
 
 ## 7. 변경 이력
 
+- v0.2.3 (2026-07-17) — **e2e 2차 완료** ([e2e-002](reverse-sync-e2e-002.md)): S1 brew-with-invariants 첫 실배치(toggle-block, 마커+vocab 4종 각인·P4 비파괴 확인) · S2 P3 검출 첫 실증(각인 제거 → 본질 손실 exit 1, 국소성 포함) · S3 P4 회귀(R2 reject·R3v2 soft-accept — 1차 동일 재현, seed=20260711). 실패 클래스 × 게이트 직교성 확인(계약 서술 손실=P3 전담 / 행동 위반=P4 전담). **w_s/w_d = 0.3/0.7 제안** — EG 합의 시 §4 확정.
 - v0.2.2 (2026-07-17) — §6b P3c vocab-잔존 **스테이지 구분 구현** (e2e-001 발견 4 → f4=(b) 확정 이행): dist 헤더 `invariants: brewed` 마커 규약 신설 + drift-check 잔존 검사를 마커 보유 dist 로 한정. 검증 3케이스(시딩 파일럿 2종 false-fail 해소 exit 0 · 마커+각인 잔존 3/3 exit 0 · 마커+vocab 전멸 drift exit 1). 잔여 = 2차 e2e → w_s/w_d 확정.
 - v0.2.1 (2026-07-11) — §6 e2e 1차 완료 반영: reject/soft-accept 분기 확인·R1 cross-check 재현·발견 4건([e2e-001](reverse-sync-e2e-001.md)). 러너 CRLF-safe 수정(p4-check·drift-check). w_s/w_d 확정은 2차 e2e 유보.
 - v0.2 (2026-07-04) — EG 검토 회신 반영 확정: §3 proposal 판별 신호(declared-intent 블록/커밋 트레일러, 무선언=기본 reject) · §4 insufficient-denominator 후속(자동 갱신 금지+사람 리뷰 직행) · §4 분모 분포 기록+N_min v0.3+ 재검토 · §6b 판정기 현황(P3c·P4a 기구현 — 확인 질문 1 답).
