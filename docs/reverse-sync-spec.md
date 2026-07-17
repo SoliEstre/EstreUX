@@ -1,6 +1,6 @@
 # Reverse Sync 판정 규격 (B3) — v0.2
 
-> **상태**: v0.2.3 (2026-07-17) — **e2e 2차 완료** ([기록](reverse-sync-e2e-002.md): S1 P3 양성·S2 P3 검출 첫 실증·S3 P4 회귀 1차 동일 재현 — P3/P4 실패 클래스 직교 확인). **w_s/w_d = 0.3/0.7 제안** — EG 대조 합의 시 §4 확정 기록 → v1.0 판단
+> **상태**: **v1.0 (2026-07-17) — 정식 승격**. e2e 1차([001](reverse-sync-e2e-001.md))·2차([002](reverse-sync-e2e-002.md)) 완료 — 판정 분기·cross-check·P3/P4 직교성 실측 + **w_s/w_d = 0.3/0.7 확정**(§4, EG crosscheck 일치·독립 검산 AGREE + guard 2줄 명문화). 이후 개정은 실측 기반(N_min 재검토 = v1.1+)
 
 > **입력**: EG REQ-1 검토서 v0.1(2026-07-04, B3×P3/P4 접속 설계 — 허브 전체 수용) + [eux-format v1.2 §2.6/§2.7](eux-format-v1.md) + PM 009 B3(본질결정 #6)
 > **목적**: 결과 코드 수정 → `.eux` 갱신(reverse sync)의 **판정 파이프라인과 수용 기준**을 규격화한다. PM 009 성공 기준 "sync 정확도 >90%"의 조작적 정의가 본 문서다.
@@ -40,7 +40,9 @@ code edit → 역-distill 후보 .eux'
 ## 4. 규격 파라미터
 
 - **clause 최소 밀도** (분모 희박 spec 과대평가 방지, REQ-1 r1): P3 격상 대상 `.eux` 는 `@ports.cmd` 당 `pre`/`post` ≥1 **또는** `@invariants` sub-section ≥2 를 충족해야 accuracy 판정 유효. 미달 spec 은 판정 불가(**insufficient-denominator**)로 표기 — reject 아님. **후속 처리** (EG 검토 개선 2): insufficient-denominator 시 자동 갱신 금지 + **사람 리뷰 직행** — 판정 불가 ≠ 판정 통과.
-- **가중치 w_s/w_d** (REQ-1 r4): 초기값 0.5/0.5 는 **임의값**이며 규범 아님 — B2 파일럿(num-keypad·toggle-block, `@invariants`/`@metamorphic` 시딩 완료 `349c4d0`) e2e 실측으로 캘리브레이션 후 본 절에 확정 기록한다. **e2e 시 spec 별 분모 크기 분포도 기록** (EG 검토 개선 3) — v0.3+ 에서 절대 하한(총 protected clause ≥ N_min) 추가 여부를 실측 기반 재검토.
+- **가중치 w_s/w_d** (REQ-1 r4): **확정 w_s = 0.3 / w_d = 0.7** (2026-07-17 — e2e 1차·2차 실측 캘리브레이션, 논거 4종([e2e-002](reverse-sync-e2e-002.md)) + EG 독립 검산 합의). 초기 임의값 0.5/0.5 대체. 경계 실례: P4 1/3절 실패 = 0.77 reject · P3 1/4 손실 = 0.925 soft-accept(리뷰 큐행) · P3 2/4 손실 = 0.85 reject — 허용 밴드 = vocab 1개. **e2e 시 spec 별 분모 크기 분포도 기록** (EG 검토 개선 3) — v1.1+ 에서 절대 하한(총 protected clause ≥ N_min) 추가 여부를 실측 기반 재검토.
+  - **accuracy 분모 규정** (EG guard ①): 동적 pass 율의 분모는 **attested + failed 만** — 공개 SKIP 절은 제외한다. SKIP 은 커버리지 갭이지 통과가 아니며, 분모 포함 여부가 경계 사례(예: 7절 앵커에서 1 counterexample = 0.90 vs 0.883)의 판정을 가르는 스케일 민감성이 실재한다.
+  - **counterexample floor** (EG guard ②): P4 counterexample ≥ 1 이면 accuracy 값과 무관하게 **silent 통과 금지** — soft-accept 로 판정되더라도 리뷰 큐 엔트리에 counterexample 을 명시 첨부한다. §3 hard-fail class 는 `@hazards` 연계 clause 한정이므로 일반 절의 counterexample 은 본 floor 가 커버한다.
 - **UI 어댑테이션** (REQ-1 r2): UI 매크로류(캘린더 등)는 서버류와 property 성격이 달라 `@metamorphic` 에 **스냅샷 등가**(같은 상태 → 같은 렌더 구조) 패턴을 허용한다 — determinism 의 UI 특화형. 세부는 B2 3호(캘린더 전 단계)에서 실증 후 보강.
 
 ## 5. 소유 경계 (REQ-1 합의)
@@ -67,6 +69,7 @@ code edit → 역-distill 후보 .eux'
 
 ## 7. 변경 이력
 
+- **v1.0 (2026-07-17) — 정식 승격**: §4 w_s/w_d = **0.3/0.7 확정** (EG crosscheck 전항 일치 + 독립 검산 AGREE, `b3-e2e2-report-mrorv5vh-ksevic` 스레드) + EG guard 2줄 명문화(accuracy 분모 = attested+failed 만·공개 SKIP 제외 / counterexample floor = silent 통과 금지·리뷰 큐 명시 첨부). seed 재현축: EG `EUX_P4_SEED` env 훅 출시(v2.5.151 `b65060c`, 기본 20260711 유지). N_min 재검토는 v1.1+ 로 이관.
 - v0.2.3 (2026-07-17) — **e2e 2차 완료** ([e2e-002](reverse-sync-e2e-002.md)): S1 brew-with-invariants 첫 실배치(toggle-block, 마커+vocab 4종 각인·P4 비파괴 확인) · S2 P3 검출 첫 실증(각인 제거 → 본질 손실 exit 1, 국소성 포함) · S3 P4 회귀(R2 reject·R3v2 soft-accept — 1차 동일 재현, seed=20260711). 실패 클래스 × 게이트 직교성 확인(계약 서술 손실=P3 전담 / 행동 위반=P4 전담). **w_s/w_d = 0.3/0.7 제안** — EG 합의 시 §4 확정.
 - v0.2.2 (2026-07-17) — §6b P3c vocab-잔존 **스테이지 구분 구현** (e2e-001 발견 4 → f4=(b) 확정 이행): dist 헤더 `invariants: brewed` 마커 규약 신설 + drift-check 잔존 검사를 마커 보유 dist 로 한정. 검증 3케이스(시딩 파일럿 2종 false-fail 해소 exit 0 · 마커+각인 잔존 3/3 exit 0 · 마커+vocab 전멸 drift exit 1). 잔여 = 2차 e2e → w_s/w_d 확정.
 - v0.2.1 (2026-07-11) — §6 e2e 1차 완료 반영: reject/soft-accept 분기 확인·R1 cross-check 재현·발견 4건([e2e-001](reverse-sync-e2e-001.md)). 러너 CRLF-safe 수정(p4-check·drift-check). w_s/w_d 확정은 2차 e2e 유보.

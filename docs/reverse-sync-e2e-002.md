@@ -43,8 +43,12 @@
 
 **확정 절차**: EG 대조 회신에서 본 제안 합의 시 spec §4 에 확정 기록 → v1.0 승격 판단.
 
+## EG 대조 (2026-07-17, 당일 회신)
+
+**crosscheck 전항 일치**(EG 로컬 재실행 동일 판정 포함) + **w_s/w_d 0.3/0.7 AGREE**(독립 검산 + 경계 도출: P3 2/4 손실 = 0.85 reject — 허용 밴드 = vocab 1개). 명문화 권고 2건(guard ① accuracy 분모 = attested+failed 만·공개 SKIP 제외 / guard ② counterexample floor) 수용 → **spec §4 확정 기록 + v1.0 정식 승격**. EG `EUX_P4_SEED` env 훅 출시(v2.5.151 `b65060c`, 기본 20260711 유지·검증 완료).
+
 ## 잔여
 
-- [ ] EG 대조 회신 (본 리포트 발신 `b3-e2e2-report-*` 스레드) → w_s/w_d 확정 → spec §4 기록·v1.0 판단
-- [ ] EG `EUX_P4_SEED` env 훅 소패치(차기 컷) → 신규 seed 축(20260718) 재실행분은 패치 후 선택 실행
+- [x] EG 대조 회신 → w_s/w_d 확정 → **spec §4 기록·v1.0 승격 완료** (2026-07-17 당일)
+- [x] EG `EUX_P4_SEED` env 훅 소패치 — **출시 완료** (v2.5.151). 신규 seed 축(20260718) 재실행분은 선택 실행
 - [ ] (1차 이월) 발견 2: anchor 규약 주석 반영(EG) + Playwright 실브라우저 승격 검토(중기)
