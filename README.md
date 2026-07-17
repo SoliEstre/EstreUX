@@ -1,64 +1,158 @@
 # EstreUX
 
-**EstreUX** (Universal eXpression) — Estre 생태계의 **개발 시점 메타-레이어**. 자연어 중간 소스
-`.eux` 를 **brew**(LLM 변환)로 EstreUI(macro-Rimwork) / EstreUV(micro-Rimwork) 코드로 펼친다.
-*(`.eux` 작성 = **expresso** · `.eux` → 코드 변환 = **brew**.)*
-γ-EstreUX-driven: **한 `.eux` spec → 다중 타깃(UI 단독 / UV 단독 / 페어) 자동 생성** = 한 번 brew 로 여러 잔.
-런타임에는 흔적이 없다(런타임 LLM 의존 0).
+[![npm version](https://img.shields.io/npm/v/estreux.svg)](https://www.npmjs.com/package/estreux)
+[![license: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-orange.svg)](LICENSE)
+[![drift gate](https://github.com/SoliEstre/EstreUX/actions/workflows/drift-check.yml/badge.svg)](https://github.com/SoliEstre/EstreUX/actions/workflows/drift-check.yml)
+[![node](https://img.shields.io/badge/node-%E2%89%A518-brightgreen.svg)](https://nodejs.org)
+[![zero runtime deps](https://img.shields.io/badge/runtime%20deps-0-blue.svg)](package.json)
 
-**Scope**: UI(EstreUI)·View(EstreUV) 에 **한정하지 않는다** — `.eux` 증류는 backend·protocol·state machine·data layer 등 **전 개발 영역**에 적용 가능(2026-05-30 A/B 도그푸딩 검증: 결제 백엔드·VAN POS·인증 머신 증류, 환각 0·93% 충실). *Universal eXpression* = 범용 코드 ↔ spec 증류 표현. (현 Phase A 구현 타깃은 EstreUI/EstreUV.)
+**Commit the spec. Generate the code. Let a gate catch them drifting apart.**
 
-> **상태: Phase A — thin spike** (2026-05-22~). 메커니즘·구조·도구 계약을 격리 검증 중.
-> **v0.4.0**: `css-asset` 프로파일(eux-format v1.3) — 실 CSS 를 *생성*하지 않고 referencing 하며 **전략적-로딩**(handle/feature 별 무엇이 언제 로드되나)을 1급으로 기록 + `drift-check --css` 정적 3-gate(`@source` sha · `@owns` 셀렉터 · 로더↔manifest 정합) + `ensureStylesheet` 로더 brew. RCSS collab 실 서비스 dogfooding 으로 정적 gate1/2/3 + 실배포 동적 측정 실증.
-> **v0.3.0**: `.eux` 포맷을 **전 개발 영역**으로 확장(v1 비-UI 디렉티브 + v1.1 adapter contract 7종 + v1.2 행동 계약 `@invariants`/`@metamorphic`) + **정적·동적 행동 계약 검증**(`drift-check --invariant` 정적 · `p4-check` fast-check 동적) 추가.
-> 풀 MVP(다중 채널·reverse sync·Estrim 통합)는 EstreUV 1.0 GA + usage data 후(Phase B).
+**[🇰🇷 한국어로 읽기 ↓](#estreux--한국어)**
 
-## Phase A spike 실행
+---
+
+## What is this?
+
+When an AI writes your code, the code survives but the conversation that produced it evaporates. Three months later there is nowhere to ask "why is this code the way it is?"
+
+EstreUX flips the direction. You write a short **spec in natural language** (a `.eux` file — Korean, English, whatever you think in), commit *that* to git as the source of truth, and generate the code from it. The generated code carries a hash of the spec, so if someone edits the spec without regenerating the code, or patches the code and forgets the spec, **the commit is blocked**. The spec can't quietly rot into a lie.
+
+Two words you'll see everywhere here:
+
+- **expresso** — writing a `.eux` spec (condensing your intent, like pulling a shot)
+- **brew** — turning that spec into code
+
+EstreUX is a **dev-time** tool. It leaves no trace at runtime: no library to ship, no LLM call in production, zero runtime dependencies.
+
+## Quickstart
 
 ```bash
-npm run brew     # (=expand 별칭) notif-toggle.eux → dist/{estreuv,estreui,pair}/notif-toggle.js
-npm run drift    # .eux ↔ 산출물 일관성 검사
-npm run spike    # brew + drift
+npm i -D estreux        # or: npx estreux (one-shot)
 
-# 임의 .eux 대상 CLI (brew/expand/drift 서브명령):
-node bin/estreux.mjs brew  <file.eux>    # .eux → 변종 생성 (expand 별칭)
-node bin/estreux.mjs drift <file.eux>    # .eux ↔ 산출물 검사
+npx estreux brew  my-widget.eux    # spec → code
+npx estreux drift my-widget.eux    # spec ↔ code consistency check
 ```
 
-- 합성 예제: [`spike/notif-toggle.eux`](spike/notif-toggle.eux) (알림 토글 위젯)
-- 플래그십 예제·spike 결과: [GitHub 저장소](https://github.com/SoliEstre/EstreUX) (`examples/` 끝말잇기 1 spec → 3 변종 데모 · `spike/SPIKE.md` — npm 배포본엔 미포함, 저장소 참조)
-- `.eux` 포맷: [v0](docs/eux-format-v0.md)(8 디렉티브) · [v1](docs/eux-format-v1.md)(비-UI 디렉티브 + adapter contract 7종 + 행동 계약 `@invariants`/`@metamorphic` + `css-asset` 프로파일 v1.3 — CSS 전략적-로딩)
-- 검증: `drift-check --contract`(인터페이스 정적) · `--invariant`(행동 계약 정적) · `--css`(css-asset 정적 3-gate) · `p4-check`(`@metamorphic` 동적, fast-check) — brew(생성) ↔ 검증 대칭. css-asset 예제: [`spike/fixtures/css-asset/`](spike/fixtures/css-asset/) (`npm run css`)
-- brew provider (2026-05-23 확정): **기본 = 호스트 에이전트/서브에이전트** (에이전트 IDE 안에서 별도 키 없이 brew, γ 타깃 병렬 위임 — 실구현 Phase B) · **부가 = API/OAuth** (로컬 Ollama·vLLM·LM Studio · BYOK, 헤드리스·CI용) · **lock = `template`** (결정적 PoC, 현 Phase A 사용). [`spike/providers/`](spike/providers/), trio `model` prefix 로 선택.
-- drift 훅: `git config core.hooksPath .githooks` (또는 `npm install` 시 `prepare` 가 자동 설정). 커밋 전 `.eux`↔산출물 drift 를 차단.
+Hook the drift gate into git so it runs on every commit:
 
-## 다운스트림에서 brew 엔진 가져오기
+```bash
+git config core.hooksPath .githooks   # or automatic via npm prepare
+```
 
-EstreUX 는 **deps-0 brew 엔진**(소스 ~21KB)이라 다운스트림(시드 마이그레이션 등)이 GitHub 전체 clone(+`.git`) 없이 경량으로 참조할 수 있다.
+## What a spec looks like
 
-- **`giget` 경량 fetch** (brew 엔진만, tarball·`.git` 없음·캐시 — tag 고정):
-  ```bash
-  npx giget gh:SoliEstre/EstreUX/spike#v0.4.0 ./estreux-engine
-  node ./estreux-engine/expand.mjs brew <file.eux>
-  ```
-- **npm 발행 후**:
-  ```bash
-  npm i -D estreux        # 또는 npx estreux (일회성)
-  npx estreux brew <file.eux>
-  ```
+A `.eux` file is a handful of sections written in plain sentences. This is a real line from [Rimlog](https://github.com/SoliEstre/Rimlog), an app whose entire skeleton is brewed from a 40-line spec (translated from the Korean original):
 
-> `git+ssh` / `github:` dependency 도 가능하나, `prepare` hook(dev hook 설정)이 소비자 환경에서 실행되므로 **`giget` 경량 fetch 또는 npm 발행본을 권장**한다. 버전 고정은 tag(`#v0.1.0`) 또는 semver(`~0.1.0` — 0.x 는 caret 이 minor 를 막으므로 tilde 권장).
+```
+saveCapture : save the capture form (source name, quote, my thought, tags) —
+              insert at the front of captures, persist to local storage,
+              show a "Saved" toast, switch to the log tab.
+```
 
-## 범위 주의 (PoC)
+One spec can also brew into **multiple targets**. A [word-chain demo](examples/) produced three versions from a single spec: an [EstreUI](https://github.com/SoliEstre/EstreUI.js) page app, a standalone [EstreUV](https://github.com/SoliEstre/EstreUV.js) web component, and the two paired.
 
-Phase A expander 는 **결정적 템플릿 매핑**(LLM stand-in)이다. 단일 spec → 다중 타깃 구조,
-provenance, drift, 재현성을 검증하는 것이 목적이며, **자연어 이해 기반 LLM expansion 은 Phase B**
-에서 같은 `.eux` 계약 위에 교체된다. LLM provider 는 **provider-무관**(특정 기본 없음) — 프런티어/
-BYOK(Claude·GPT 등)와 로컬 서버(Ollama·vLLM·LM Studio 등)를 수평 옵션으로(trio `model` 선택).
+## Does it actually save work?
+
+Measured on real components (a numeric keypad and a collapsible block, distilled back from framework code): the lines a human has to maintain dropped **60–82%** — a 152-line keypad became a 28-line spec. The generated code itself is sometimes longer than the original; what shrinks is the part a person reads and edits. The [measurement log](docs/phase-b-usage-metrics.md) lives in this repo.
+
+Not just UI, either: the format has been exercised on backend flows, protocol adapters, state machines, and a zero-dependency node server ([Rimlog's insight server](https://github.com/SoliEstre/Rimlog/blob/main/eux/insight-server.eux) is one spec).
+
+## How the checking works
+
+Generation without verification would just be trust. EstreUX ships the verification side too:
+
+- **`estreux drift`** — static gates: does the generated code still match the spec's hash, interface contract, declared invariants, and CSS-loading strategy?
+- **`p4-check`** — dynamic gate: the spec's `@metamorphic` section declares behavioral properties ("toggling twice restores the original state"), and they run as [fast-check](https://github.com/dubzzz/fast-check) property tests against the real implementation.
+
+A cross-repo round-trip of this pipeline (intended change accepted, destructive change rejected, deterministic re-runs on both sides) is recorded in [reverse-sync-e2e-001](docs/reverse-sync-e2e-001.md).
+
+## Status
+
+Phase A (thin spike): mechanism, provenance, and tool contracts are proven. The default brew provider is your coding agent itself (Claude Code, Cursor, and friends — no extra API key). The full MVP (multi-channel brew, reverse sync, richer calibration) is Phase B, in progress. Honest caveat: natural-language specs trade precision for readability, and we are still measuring where that trade bites.
+
+## Dig deeper
+
+- [`.eux` format v1](docs/eux-format-v1.md) — directives, adapter contracts, behavioral contracts ([v0](docs/eux-format-v0.md) for the minimal core)
+- [Brew adoption guide](docs/brew-adoption.md) — bringing an existing codebase into spec-land
+- [Compact spec](docs/COMPACT-SPEC.md) — the dense, agent-oriented reference (terms, contracts, version history)
+- [Reverse-sync spec](docs/reverse-sync-spec.md) — how code changes flow back into specs through accept/reject gates
+
+## License
+
+[Apache-2.0](LICENSE) © 2026 SoliEstre (Estre Soliette) — patent grant included by design for a standards-oriented meta layer. The runtime libraries ([EstreUI](https://github.com/SoliEstre/EstreUI.js) / [EstreUV](https://github.com/SoliEstre/EstreUV.js)) are MIT; the layers are license-compatible.
+
+---
+
+# EstreUX — 한국어
+
+**명세를 커밋하고, 코드를 생성하고, 둘이 어긋나면 게이트가 막는다.**
+
+## 이게 뭔가요?
+
+AI가 코드를 써 주는 시대의 문제가 하나 있습니다. 코드는 남는데, 그 코드를 만들어 낸 대화와 의도는 증발합니다. 석 달 뒤에 "이 코드가 왜 이렇게 돼 있지?"라고 물을 곳이 없습니다.
+
+EstreUX는 방향을 뒤집습니다. 짧은 **자연어 명세**(`.eux` 파일 — 한국어든 영어든 생각하는 언어로)를 쓰고, 그것을 git의 원본으로 커밋하고, 코드는 명세에서 생성합니다. 생성된 코드에는 명세의 해시가 박혀서, 명세만 고치거나 코드만 고치면 **커밋이 막힙니다**. 명세가 조용히 낡아서 거짓말이 되는 일을 게이트로 차단하는 겁니다.
+
+여기서 계속 만나게 될 단어 두 개:
+
+- **expresso** — `.eux` 명세를 쓰는 일 (의도를 에스프레소처럼 농축해서 뽑아내기)
+- **brew** — 그 명세를 코드로 내리는 일
+
+EstreUX는 **개발 시점** 도구입니다. 런타임에는 흔적이 없습니다 — 배포할 라이브러리도, 프로덕션 LLM 호출도, 런타임 의존성도 0입니다.
+
+## 빠른 시작
+
+```bash
+npm i -D estreux        # 또는 일회성: npx estreux
+
+npx estreux brew  my-widget.eux    # 명세 → 코드
+npx estreux drift my-widget.eux    # 명세 ↔ 코드 정합 검사
+```
+
+커밋마다 drift 게이트가 돌도록 git에 연결:
+
+```bash
+git config core.hooksPath .githooks   # npm prepare 로도 자동 설정
+```
+
+## 명세는 이렇게 생겼습니다
+
+`.eux` 파일은 평문 문장 몇 절로 돼 있습니다. 40줄 명세로 앱 골격 전체를 brew한 [Rimlog](https://github.com/SoliEstre/Rimlog)의 실제 한 줄:
+
+```
+saveCapture : 캡처 폼(소스명·인용·내 생각·태그) 저장 — captures 맨 앞 삽입 +
+              로컬 스토리지 반영 + "저장됐어요" 토스트 + 기록 탭으로 전환.
+```
+
+명세 하나로 **여러 타깃**을 뽑을 수도 있습니다. [끝말잇기 데모](examples/)는 명세 한 장에서 세 버전([EstreUI](https://github.com/SoliEstre/EstreUI.js) 페이지 앱 / 단독 [EstreUV](https://github.com/SoliEstre/EstreUV.js) 웹컴포넌트 / 둘의 페어)이 나왔습니다.
+
+## 정말 일이 줄어드나요?
+
+실제 컴포넌트(숫자 키패드·접이식 블록을 프레임워크 코드에서 명세로 역증류)로 실측했습니다. 사람이 유지하는 줄 수가 **60~82%** 줄었고, 152줄 키패드가 28줄 명세가 됐습니다. 생성 코드 자체는 원본보다 길어지기도 합니다 — 줄어드는 건 사람이 읽고 고치는 쪽입니다. [측정 기록](docs/phase-b-usage-metrics.md)이 리포에 있습니다.
+
+UI만도 아닙니다. 백엔드 흐름·프로토콜 어댑터·상태 머신·의존성 0 node 서버([Rimlog 인사이트 서버](https://github.com/SoliEstre/Rimlog/blob/main/eux/insight-server.eux)가 명세 한 장)까지 같은 포맷으로 다뤄 왔습니다.
+
+## 검증은 어떻게 하나요?
+
+검증 없는 생성은 그냥 믿음입니다. EstreUX는 검증 쪽도 같이 제공합니다:
+
+- **`estreux drift`** — 정적 게이트: 생성 코드가 명세의 해시·인터페이스 계약·선언된 불변식·CSS 로딩 전략과 여전히 일치하는가
+- **`p4-check`** — 동적 게이트: 명세의 `@metamorphic` 절이 행동 성질("두 번 토글하면 원상 복귀")을 선언하고, [fast-check](https://github.com/dubzzz/fast-check) property 테스트로 실제 구현에 대해 실행됩니다
+
+이 파이프라인의 교차 리포 왕복 시험(의도 변경 수용·파괴 변경 거절·양측 결정적 재현)은 [reverse-sync-e2e-001](docs/reverse-sync-e2e-001.md)에 기록돼 있습니다.
+
+## 현재 상태
+
+Phase A(thin spike): 메커니즘·출처 추적·도구 계약은 검증됐습니다. 기본 brew provider는 여러분의 코딩 에이전트 자신입니다(Claude Code·Cursor 등 — 별도 API 키 불요). 풀 MVP(다중 채널 brew·reverse sync·캘리브레이션 고도화)는 Phase B로 진행 중입니다. 정직한 주의: 자연어 명세는 가독성을 얻는 대신 정밀도를 내주는 트레이드이고, 그 트레이드가 어디서 아픈지는 아직 측정 중입니다.
+
+## 더 깊이
+
+- [`.eux` 포맷 v1](docs/eux-format-v1.md) — 디렉티브·어댑터 계약·행동 계약 (최소 코어는 [v0](docs/eux-format-v0.md))
+- [Brew 도입 가이드](docs/brew-adoption.md) — 기존 코드베이스를 명세 체계로
+- [압축 명세](docs/COMPACT-SPEC.md) — 에이전트·기여자용 고밀도 레퍼런스(용어·계약·버전 이력)
+- [Reverse-sync 규격](docs/reverse-sync-spec.md) — 코드 변경이 명세로 되돌아오는 수용/거절 게이트
 
 ## 라이선스
 
-**Apache License 2.0** (Copyright 2026 SoliEstre (Estre Soliette) — [LICENSE](LICENSE) · [NOTICE](NOTICE)).
-표준 지향 메타-레이어라 **특허 grant** 포함된 Apache 2.0 채택 (런타임 라이브러리 EstreUI/EstreUV 는
-MIT — 레이어별 라이선스, 상호 호환). **npm 발행** (v0.4.0) — `files` 화이트리스트로 brew 엔진 + 검증 도구 + css-asset 예제만
-배포, 내부 자산(examples/dist·adoption·hooks·비공개 조율 문서) 제외.
+[Apache-2.0](LICENSE) © 2026 SoliEstre (Estre Soliette) — 표준 지향 메타 레이어라 특허 grant가 포함된 Apache 2.0을 채택했습니다. 런타임 라이브러리([EstreUI](https://github.com/SoliEstre/EstreUI.js) / [EstreUV](https://github.com/SoliEstre/EstreUV.js))는 MIT이며, 레이어 간 라이선스는 상호 호환입니다.
