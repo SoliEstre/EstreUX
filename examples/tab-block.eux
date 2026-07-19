@@ -1,0 +1,48 @@
+@component tab-block
+@intent EstreUI 스톡 EstreTabBlockHandle 의 EstreUV 재구현 — V3 대체 파일럿 3호 (B2 중형, 캘린더 전 단계). 탭셋 + 콘텐츠 전환 블록: 원본은 사용자가 titled_tab_block(ul>li)·tab_content_blocks 마크업을 전부 작성하고 본체가 jQuery 로 결선하지만, 이 재구현은 탭셋을 shadow DOM 에 셀프 렌더해 `<tab-block tabs="...">` + light DOM 콘텐츠 자식들로 줄인다. 원본의 선택 계약(1-base tab id · data-tab-selected 3표면 동기 · begin-tab 미지정 시 가운데 탭 초기 선택 · 클릭+스와이프 전환 · 경계 no-op)은 전부 보존 — 기존 EstreUI 앱의 CSS 셀렉터(data-tab-selected)와 소비 코드가 그대로 동작해야 한다. UI 어댑테이션(@metamorphic 스냅샷 등가 패턴, reverse-sync-spec §4)의 첫 실증 대상.
+@source
+  file: ../../EstreUI.js/scripts/estreUi-handles.js
+  lines: 4847-5050 (EstreTabBlockHandle — uis 레지스트리 titledTabBlock/tabSet/tabContentBlocks)
+@expansion temperature=0.2 model=agent/claude template=estreux/v0.0.1
+@profile ui-component
+@targets estreuv
+
+@state
+tabs      : string = ""     # 콤마 구분 탭 라벨 목록, 예: "캡처,기록,주간" — 탭 수 N 의 원천
+selected  : number = 0      # 현재 선택 탭 id (1-base). 0 = 미초기화
+beginTab  : string = ""     # 초기 선택 탭 id (원본 data-begin-tab). 미지정 시 가운데 탭 규칙
+
+@behavior
+mount:
+  tabs 라벨로 탭셋(shadow)을 렌더하고, light DOM 자식 중 data-tab-id 보유 요소를 콘텐츠 표면으로 결선.
+  초기 선택 = beginTab 이 유효하면 그 id, 아니면 **가운데 탭 규칙**: 탭 목록의 양끝을 번갈아 제거해
+  마지막 남는 탭 (홀수 N = 정중앙 · 짝수 N = 중앙 왼쪽) — 원본 initTabSelection 알고리즘 보존.
+selectTab(id):
+  1-base 정수 id 가 [1..N] 이면 탭(shadow)·콘텐츠(light) 두 표면에 data-tab-selected="1"/"" 를 동기 반영하고
+  tabchange CustomEvent(detail.id, bubbles·composed) 를 발화. 범위 밖·비정수는 무시 (원본 가드 보존).
+click:
+  탭 클릭 = selectTab(그 탭 id).
+swipe:
+  콘텐츠 영역 X축 스와이프 (Pointer Events, 임계값) — 왼쪽 = 다음 탭, 오른쪽 = 이전 탭.
+  경계 클램프: 첫 탭에서 prev / 끝 탭에서 next 는 변경 없음 (원본 getPrev/NextTabId 클램프 보존).
+  이동 중 인접 타깃 콘텐츠에 data-slide="1" 피드백, 완료/취소 시 해제 (원본 슬라이드 피드백 계약).
+
+@invariants
+  state:
+    - member-of: selected 는 [1..N], 각 표면의 data-tab-selected 는 {"1", ""} — 값 "1" 인 요소는 표면당 정확히 1개
+  temporal:
+    - bounded: 스와이프/prev/next 에 의한 selected 이동은 [1..N] 안에 bounded — 경계에서 변경 없음
+  causality:
+    - selectTab(유효 id) 이 두 표면 data-tab-selected 반영 ∧ tabchange 발화에 precedes
+    - 범위 밖 id 는 아무 표면도 변경하지 않음을 implies (원본 selectTab 가드)
+
+@metamorphic
+  round_trip:
+    - next-then-prev: 중간 탭에서 selectNextTab() 후 selectPrevTab() 하면 selected·두 표면 상태가 원상 복원
+  idempotency:
+    - reselect-same-id: selectTab(현재 id) 를 N 회 반복해도 두 표면의 선택 상태 집합은 불변
+  determinism:
+    - render-structure-by-state: 같은 (tabs, selected) 의 신규 인스턴스 둘은 동일한 렌더 구조 — 탭셋 shadow 마크업 + 표면별 data-tab-selected 분포 (UI 스냅샷 등가, reverse-sync-spec §4 첫 실증)
+
+@hazards
+  - 원본 앱의 기존 CSS/관찰 코드는 data-tab-selected 로 표면 상태를 읽는다 — 속성명·값 도메인("1"/"") 변경은 소비측 파괴
