@@ -4,6 +4,10 @@
 # 활성화: `git config core.hooksPath .githooks` (npm install 시 prepare 가 자동 설정).
 
 fail=0
+
+# 익명화 게이트 — staged 에 금칙 식별자 잔존 검사 (목록 = .anon-blocklist.local, gitignore·없으면 skip)
+node spike/anon-check.mjs || fail=1
+
 for eux in $(git ls-files '*.eux'); do
   node spike/drift-check.mjs "$eux" || fail=1
 done

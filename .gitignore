@@ -8,3 +8,4 @@ node_modules/
 examples/.e2e-tmp/
 examples/*.tgz
 examples/package-lock.json
+.anon-blocklist.local
