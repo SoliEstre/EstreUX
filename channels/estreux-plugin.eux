@@ -1,0 +1,25 @@
+@component estreux-plugin
+@intent estreux 도구를 코딩 에이전트 하네스에 3채널로 노출하는 플러그인 — 절차(Skill)·도구(MCP)·게이트(hook)가 성격별 주력 1채널을 갖는다. 이 spec 이 채널 배정의 SSoT 이고, channels/ 스캐폴드와 manifest 는 여기서 투영된다(생성기 = B4 ⓒ, 이 스캐폴드는 그 손 표본 1호).
+@expansion model=agent/claude
+# @targets 없음 — 이 spec 의 산출물은 코드가 아니라 channels/ 구조 자체다(생성기 ⓒ 의 입력).
+# 구조 정합 검사는 ⓒ 생성기 + ⓓ N-way 축이 맡는다. 코드 dist 를 기대하는 drift 게이트 정의역 밖.
+
+@channels
+  default : mcp                          # 절이 침묵하면 MCP 가 주력
+  brewGuide : skill                      # brew 절차 안내 — 사람이 읽고 따르는 절차 문서 성격
+  distillTool : mcp                      # distill(코드→spec 역증류) 도구 노출
+  brewTool : mcp                         # brew(spec→코드) 도구 노출
+  driftCheckTool : mcp, pointer(hook)    # drift 검사 도구 — 주력 MCP, 훅에서 포인터로 호출
+  driftGate : hook, pointer(mcp)         # 커밋 시 drift 게이트 — 주력 hook, 도구 본체는 MCP 포인터
+
+@behavior
+brewGuide : .eux 작성(expresso) → brew → drift 확인의 표준 절차를 단계별로 안내. 실행은 안 함 — 절차 문서.
+distillTool : 대상 코드 파일을 받아 .eux spec 초안을 역증류. 산출은 제안 — 커밋은 사람/게이트 몫.
+brewTool : .eux spec 을 받아 대상 타깃 코드로 brew. provenance 헤더(sha) 각인.
+driftCheckTool : spec ↔ dist 정합 검사(P2/P3). exit 코드로 판정 반환.
+driftGate : pre-commit 시 staged .eux/dist 변경에 driftCheckTool 을 호출해 어긋나면 커밋 차단.
+
+@invariants
+- 한 기능(절)의 주력 채널은 정확히 1개 — 중복 주력은 게이트 FAIL (channels-design-v0 §3)
+- manifest(plugin.json)·mcp/package.json 의 버전은 단일 소스에서 투영 — 손 편집 금지 (EG 함정 1)
+- MCP serverInfo.version 은 package.json 동적 참조 — 문자열 하드코딩 금지 (EG 함정 2)

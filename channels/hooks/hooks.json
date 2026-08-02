@@ -1,0 +1,6 @@
+{
+  "hooks": {
+    "PreToolUse": [],
+    "_scaffold_note": "driftGate 훅 배선은 B4-c 에서. 형태는 pre-commit 시 drift-check 호출 — 주력 hook, 도구 본체는 MCP 포인터 (estreux-plugin.eux @channels driftGate)."
+  }
+}

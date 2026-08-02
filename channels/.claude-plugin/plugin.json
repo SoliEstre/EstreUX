@@ -1,0 +1,11 @@
+{
+  "name": "estreux",
+  "version": "0.0.1",
+  "description": "Commit the spec, generate the code, let a gate catch them drifting apart — estreux tools as Skill / MCP / hook channels.",
+  "mcpServers": {
+    "estreux-mcp": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/server.cjs"]
+    }
+  }
+}
