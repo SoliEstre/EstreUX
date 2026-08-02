@@ -148,6 +148,7 @@ Phase A(thin spike): 메커니즘·출처 추적·도구 계약은 검증됐습�
 
 ## 더 깊이
 
+- [코드 말고 명세를 커밋해 봤습니다](https://estreui.tistory.com/6) — 이 방식으로 앱을 하나 만든 경험담 (블로그, 한국어)
 - [`.eux` 포맷 v1](docs/eux-format-v1.md) — 디렉티브·어댑터 계약·행동 계약 (최소 코어는 [v0](docs/eux-format-v0.md))
 - [Brew 도입 가이드](docs/brew-adoption.md) — 기존 코드베이스를 명세 체계로
 - [압축 명세](docs/COMPACT-SPEC.md) — 에이전트·기여자용 고밀도 레퍼런스(용어·계약·버전 이력)
