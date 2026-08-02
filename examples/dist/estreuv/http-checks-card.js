@@ -1,5 +1,5 @@
 // ┌─ estreux:expanded ──────────────────────────────────────────────
-// │ source : http-checks-card.eux  (sha256:a58aa0f2c06b)
+// │ source : http-checks-card.eux  (sha256:ae7a2b9d5717)
 // │ profile: ui-component
 // │ target : estreuv   provider : agent
 // │ trio   : temp=undefined model=agent/claude template=undefined

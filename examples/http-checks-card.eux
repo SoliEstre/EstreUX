@@ -33,7 +33,7 @@ grade-fine   = #8fd14f    # ms ≤ 500
 grade-bad    = #ffd60a    # ms ≤ 1000
 grade-issue  = #ff9f0a    # ms ≤ 2000
 grade-failure= #ff4d4f    # 초과 또는 down
-.card : 다크 var(--ltnc-card,#1a1d23) · var(--ltnc-text,#e8eaed) · 1px 보더 rgba(255,255,255,.06) · 12px 라운드 · 12/14px 패딩
+.card : 다크 var(--host-card,#1a1d23) · var(--host-text,#e8eaed) · 1px 보더 rgba(255,255,255,.06) · 12px 라운드 · 12/14px 패딩
 .row  : flex·align center·gap 8px · 4/6px 패딩 · 7px 라운드 · cursor pointer · hover bg rgba(255,255,255,.05)
 .dot  : 8px 원 · 기본 crit · .on → ok(+glow)
 .bar  : flex 1 · 6px 높이 · 3px 라운드 · 트랙 배경 = good/fine/bad/issue 구간 옅은 그라데이션(10/25/50/100%)
