@@ -5,8 +5,16 @@
 
 fail=0
 
-# 익명화 게이트 — staged 에 금칙 식별자 잔존 검사 (목록 = .anon-blocklist.local, gitignore·없으면 skip)
-node spike/anon-check.mjs || fail=1
+# 익명화 게이트 — staged 에 금칙 식별자 잔존 검사 (목록 = .anon-blocklist.local, gitignore).
+# 원저자 환경에서는 --strict — 목록이 지워지거나 경로가 바뀌어 검사가 무력화된 상태를 통과로 세지 않는다.
+# 판별을 «목록 유무» 로 하면 안 된다: 목록이 있을 때만 엄격해지는 조건은 목록이 사라지는 사고를
+# 정의상 못 잡는다. 그래서 목록과 무관한 신호(origin 소유자)를 쓴다.
+# 외부 기여자 포크에서는 비-strict 라 SKIP 통과 — 게이트의 주 대상은 원저자 환경이라는 설계 유지.
+case "$(git remote get-url origin 2>/dev/null)" in
+  *SoliEstre*|*Esterkxz*) anon_strict=--strict ;;
+  *) anon_strict= ;;
+esac
+node spike/anon-check.mjs $anon_strict || fail=1
 
 for eux in $(git ls-files '*.eux'); do
   node spike/drift-check.mjs "$eux" || fail=1
