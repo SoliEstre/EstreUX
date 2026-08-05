@@ -6,7 +6,7 @@
 // 고치지 않고 파일·추출 방법·라벨 선언만 추가한다. 파일이 아직 없으면 경고하고
 // 비교에서 제외하지만, 존재하는 파일을 읽거나 값을 추출하지 못하면 검사 실패다.
 //
-// 사용법: node spike/verify-nway-version.mjs [--check] [--channels-dir <경로>]
+// 사용법: node spike/verify-nway-version.mjs [--check] [--strict] [--channels-dir <경로>]
 //
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -57,10 +57,12 @@ const VERSION_AXES = [
 function parseArgs(argv) {
   let mode = 'check';
   let channelsDir = DEFAULT_CHANNELS_DIR;
+  let strict = false;   // 대조 가능한 표면이 2개 미만이면 실패 처리 (게이트 용도)
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--check') mode = 'check';
+    else if (arg === '--strict') strict = true;
     else if (arg === '--channels-dir') {
       if (!argv[i + 1]) throw new Error('--channels-dir 뒤에 경로가 필요함');
       channelsDir = resolve(argv[++i]);
@@ -69,7 +71,7 @@ function parseArgs(argv) {
     }
   }
 
-  return { mode, channelsDir };
+  return { mode, channelsDir, strict };
 }
 
 function jsonPathLabel(path) {
@@ -194,9 +196,21 @@ function main() {
       continue;
     }
 
-    if (values.size === 0) {
+    // 비교 대상이 2개 미만이면 «일치» 라고 말하지 않는다. 값이 하나뿐인 집합은 «값이 하나인가» 라는 물음에
+    // 논리적으로 항상 참이라(vacuous truth) 초록이 아무 정보도 싣지 않는다 — 어떤 입력에서도 통과하는 관문은
+    // 영구히 빨간 관문과 같은 이유로 꺼진 관문이다(_lessons/006 의 반대편 짝. 허브 규격이 «미생성 표면을 FAIL 로
+    // 세지 말라» 고 지시했는데, 세지 않는 것과 «통과» 라고 말하는 것은 다르다는 게 적대적 검증에서 드러났다).
+    // 그래서 SKIP 으로 구분해 보고하고, 게이트로 쓸 때는 --strict 로 실패 처리한다.
+    if (present.length < 2) {
       warnings++;
-      console.warn(`WARN ${axis.label}: 비교할 수 있는 버전 값이 없어 검사 건너뜀`);
+      const detail = present.length === 0
+        ? '비교할 수 있는 버전 값이 없음'
+        : `표면이 ${present.length}개뿐이라 대조 불가 — ${[...values][0]}`;
+      console.warn(`SKIP ${axis.label}: ${detail} (${present.length}/${rows.length} 표면)`);
+      if (options.strict) {
+        failedAxes++;
+        console.error(`FAIL ${axis.label}: --strict — 대조 가능한 표면이 2개 미만`);
+      }
       continue;
     }
 
