@@ -24,6 +24,7 @@ const REPO_ROOT = resolve(SCRIPT_DIR, '..');
 const DEFAULT_CHANNELS_DIR = resolve(REPO_ROOT, 'channels');
 const ROOT_TOKEN = '${CLAUDE_PLUGIN_ROOT}';
 const MANIFEST_DESCRIPTION = 'Commit the spec, generate the code, let a gate catch them drifting apart — estreux tools as Skill / MCP / hook channels.';
+const MANAGED_MANIFEST_FIELDS = new Set(['name', 'version', 'description', 'mcpServers']);
 
 // Claude 플러그인은 Skill 과 hook 을 약속된 디렉터리에서 자동 발견한다.
 // 따라서 manifest 에는 MCP 경로만 쓰고, 나머지 채널은 실물 존재를 검사한다.
@@ -81,7 +82,7 @@ function parseEux(filePath) {
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index];
     const lineNumber = index + 1;
-    const directive = line.match(/^@([\w-]+)\b\s*(.*)$/);
+    const directive = line.match(/^\s*@([\w-]+)\b\s*(.*)$/);
 
     if (directive) {
       const [, name, rest] = directive;
@@ -171,11 +172,9 @@ function validateSpecs(specs, channelsDir) {
           : `기능 ${entry.feature}에 주력 채널 ${entry.primary.length}개 선언: ${entry.primary.join(', ')}`;
         diagnostics.push({ filePath: entry.filePath, line: entry.line, reason });
       }
-      if (entry.feature !== 'default') {
-        const grouped = featureEntries.get(entry.feature) || [];
-        grouped.push(entry);
-        featureEntries.set(entry.feature, grouped);
-      }
+      const grouped = featureEntries.get(entry.feature) || [];
+      grouped.push(entry);
+      featureEntries.set(entry.feature, grouped);
     }
   }
 
@@ -261,7 +260,7 @@ function readMcpPackage(channelsDir) {
   }
 }
 
-function renderManifest(specs, channelsDir) {
+function renderManifest(specs, channelsDir, existingManifest = {}) {
   const firstSpec = specs.find((spec) => spec.component?.value);
   const component = firstSpec?.component?.value || basename(channelsDir);
   const pluginName = component.replace(/-plugin$/, '');
@@ -271,31 +270,39 @@ function renderManifest(specs, channelsDir) {
     ...(entry.pointers || []),
   ])));
 
-  const lines = [
-    '{',
-    `  "name": ${JSON.stringify(pluginName)},`,
-    `  "version": ${JSON.stringify(mcpPackage.version || '0.0.0')},`,
-    `  "description": ${JSON.stringify(MANIFEST_DESCRIPTION)}${channels.has('mcp') ? ',' : ''}`,
+  const properties = [
+    `  "name": ${JSON.stringify(pluginName)}`,
+    `  "version": ${JSON.stringify(mcpPackage.version || '0.0.0')}`,
+    `  "description": ${JSON.stringify(MANIFEST_DESCRIPTION)}`,
   ];
 
   if (channels.has('mcp')) {
     const serverName = mcpPackage.name || `${pluginName}-mcp`;
-    lines.push(
+    properties.push([
       '  "mcpServers": {',
       `    ${JSON.stringify(serverName)}: {`,
       '      "command": "node",',
       `      "args": ["${ROOT_TOKEN}/mcp/server.cjs"]`,
       '    }',
       '  }',
-    );
+    ].join('\n'));
   }
-  lines.push('}');
-  return lines.join('\n') + '\n';
+
+  for (const [key, value] of Object.entries(existingManifest)) {
+    if (MANAGED_MANIFEST_FIELDS.has(key)) continue;
+    const [firstLine, ...rest] = JSON.stringify(value, null, 2).split('\n');
+    properties.push([
+      `  ${JSON.stringify(key)}: ${firstLine}`,
+      ...rest.map((line) => `  ${line}`),
+    ].join('\n'));
+  }
+
+  return ['{', properties.join(',\n'), '}'].join('\n') + '\n';
 }
 
 function firstDiff(actual, expected) {
-  const actualLines = actual.split(/\r?\n/);
-  const expectedLines = expected.split(/\r?\n/);
+  const actualLines = actual.replace(/\r?\n$/, '').split(/\r?\n/);
+  const expectedLines = expected.replace(/\r?\n$/, '').split(/\r?\n/);
   const count = Math.max(actualLines.length, expectedLines.length);
   for (let index = 0; index < count; index++) {
     if (actualLines[index] !== expectedLines[index]) {
@@ -336,10 +343,21 @@ function main() {
   }
 
   const manifestPath = resolve(options.channelsDir, '.claude-plugin/plugin.json');
-  const rendered = renderManifest(specs, options.channelsDir);
+  const previous = existsSync(manifestPath) ? readFileSync(manifestPath, 'utf8') : null;
+  let existingManifest = {};
+  if (previous !== null) {
+    try {
+      existingManifest = JSON.parse(previous);
+      if (!existingManifest || Array.isArray(existingManifest) || typeof existingManifest !== 'object') throw new Error();
+    } catch {
+      console.error(`FAIL ${displayPath(manifestPath)}:1: 기존 manifest 를 해석할 수 없음`);
+      process.exitCode = 1;
+      return;
+    }
+  }
+  const rendered = renderManifest(specs, options.channelsDir, existingManifest);
   if (options.mode === 'write') {
     mkdirSync(dirname(manifestPath), { recursive: true });
-    const previous = existsSync(manifestPath) ? readFileSync(manifestPath, 'utf8') : null;
     if (previous === rendered) {
       console.log(`OK ${displayPath(manifestPath)}: 생성 결과와 이미 일치`);
     } else {
@@ -349,13 +367,12 @@ function main() {
     return;
   }
 
-  if (!existsSync(manifestPath)) {
+  if (previous === null) {
     console.error(`FAIL ${displayPath(manifestPath)}:1: 생성 결과와 대조할 manifest 실물 없음`);
     process.exitCode = 1;
     return;
   }
-  const current = readFileSync(manifestPath, 'utf8');
-  const diff = firstDiff(current, rendered);
+  const diff = firstDiff(previous, rendered);
   if (diff) {
     console.error(`FAIL ${displayPath(manifestPath)}:${diff.line}: 생성 결과와 불일치`);
     console.error(`  현재: ${diff.actual}`);
