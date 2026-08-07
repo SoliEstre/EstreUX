@@ -5,7 +5,7 @@
 # 구조 정합 검사는 ⓒ 생성기 + ⓓ N-way 축이 맡는다. 코드 dist 를 기대하는 drift 게이트 정의역 밖.
 
 @channels
-  default : mcp                          # 절이 침묵하면 MCP 가 주력
+  default : mcp                          # 기본 배정 «의도» 기록 — 생성기는 상속시키지 않는다(§2.8)
   brewGuide : skill                      # brew 절차 안내 — 사람이 읽고 따르는 절차 문서 성격
   distillTool : mcp                      # distill(코드→spec 역증류) 도구 노출
   brewTool : mcp                         # brew(spec→코드) 도구 노출

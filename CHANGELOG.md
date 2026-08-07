@@ -2,6 +2,11 @@
 
 > EstreUX(`.eux` Universal eXpression) 변경 이력. 형식은 [Keep a Changelog](https://keepachangelog.com) 약식.
 
+## Unreleased
+
+### Added
+- **eux-format v1.4** — `@channels` 디렉티브 ([docs/eux-format-v1.md](docs/eux-format-v1.md) §2.8): 플러그인 기능별 주력 채널 1개(`skill`·`mcp`·`hook`)와 `pointer(...)` 를 `.eux` 에 기록하고, `spike/gen-channel-manifest.mjs` 가 채널 실물과 `.claude-plugin/plugin.json` 투영 결과를 검사. `default` 는 검사·투영 채널 집합에 참여하지만 다른 기능에 자동 상속되지는 않음.
+
 ## 0.4.0 (2026-06-05)
 
 `.eux` 에 **CSS 전략적-로딩 manifest**(`css-asset` 프로파일, RCSS collab) 를 추가한 minor — 실 서비스 dogfooding 으로 정적+동적 한 바퀴 실증.

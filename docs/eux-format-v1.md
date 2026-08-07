@@ -13,8 +13,8 @@
 | | v0 (Phase A) | v1 (Universal) |
 | --- | --- | --- |
 | **scope** | UI 컴포넌트만 | 전 개발 영역(UI·backend·protocol·state machine·data) |
-| **디렉티브** | 8종 (`@component`·`@intent`·`@expansion`·`@targets`·`@state`·`@behavior`·`@render`·`@persist`) | 8종 **+ 신규 4종** (`@ports`·`@machine`·`@source`·`@deps`) |
-| **분류** | (없음 — 전부 UI 가정) | **컴포넌트 프로파일** 5종 (ui-component·backend-service·protocol-adapter·state-machine·supervisor) |
+| **디렉티브** | 8종 (`@component`·`@intent`·`@expansion`·`@targets`·`@state`·`@behavior`·`@render`·`@persist`) | 8종 **+ 신규 4종** (`@ports`·`@machine`·`@source`·`@deps`) · 후속: v1.1 adapter contract 7종 · v1.2 `@invariants`/`@metamorphic` · v1.4 `@channels` |
+| **분류** | (없음 — 전부 UI 가정) | **컴포넌트 프로파일** 5종 (ui-component·backend-service·protocol-adapter·state-machine·supervisor) + v1.3 `css-asset` |
 
 ⚠️ **v1 은 "추가"이지 "교체"가 아니다.** v0 의 8 디렉티브·결정성 trio·provenance/drift 규칙은 **그대로 계승**돼요. UI 컴포넌트는 v0 와 똑같이 쓰면 되고, 비-UI 모듈만 새 디렉티브를 추가로 쓰면 돼요.
 
@@ -266,6 +266,43 @@ event-driven 운영 원칙 + anti-pattern 카탈로그.
 **P3 단계** — 절 형식만 정의(parseEux 파싱). **실행은 P4** — `@metamorphic` 절에서 property 를 자동 추출해 경량 framework(fast-check 류)로 검증. P4 1st 최적 = history-store(mode chain + byte-identity + backfill idempotency 3 성질).
 
 > **`@hazards` 3-class (Q3, 별도 트랙)** — orchestration-state class 추가 합의(credential·integrity 외): 식별자 누설·wait/escalation state 누설·anonymous probe 흔적·handoff race window. 구체 list 는 P3a 1st cut(server-relay) drafting 시 협의. `@hazards` 절 정식화는 C8 트랙(§6)과 함께.
+
+## 2.8 노출 채널 디렉티브 — `@channels` (v1.4)
+
+> **왜** — 같은 플러그인 기능을 Skill·MCP·hook 여러 표면에 내놓을 때 배정이 디렉터리 위치에만 있으면, 한 기능의 구현이 둘로 갈라지거나 spec 과 실물 배치가 조용히 어긋날 수 있어요. `@channels` 는 기능별 **주력 채널 1개**와 다른 채널의 **포인터**를 `.eux` 에 기록해, `channels/` 배정과 Claude 플러그인 manifest 를 한 게이트에서 검사하게 해요.
+
+**무엇** — 플러그인의 기능 키마다 주력 노출 채널을 하나 지정하고, 같은 기능을 다른 표면에서도 찾게 할 필요가 있으면 `pointer(...)` 를 덧붙이는 선언이에요.
+
+**문법** — `channels/estreux-plugin.eux` 의 실사용 선언을 줄이면 다음과 같아요:
+
+```
+@channels
+  default : mcp
+  brewGuide : skill
+  driftCheckTool : mcp, pointer(hook)
+  driftGate : hook, pointer(mcp)
+```
+
+| 요소 | 의미 |
+|---|---|
+| **기능 키** | `brewGuide`·`driftCheckTool` 같은 배정 식별자. 첫 글자는 영문자 또는 `_`, 이후는 영문자·숫자·`_`·`-`를 써요. 현재 생성기는 이 키를 다른 디렉티브의 절 이름과 대조하지 않아요. |
+| **주력 채널 값** | `:` 뒤의 일반 토큰. 한 배정에 정확히 하나여야 해요. 현재 투영 규칙이 있는 값은 `skill`·`mcp`·`hook` 세 가지예요. |
+| **`default`** | 기본 배정 의도를 기록하는 특수 기능 키. 파싱·채널 실물 검사·manifest 채널 집합에는 일반 배정과 똑같이 참여하고, 성공 요약의 기능 수에서만 빠져요. 현재 생성기는 `default` 값을 다른 기능에 상속하거나 생략된 기능의 배정을 채우지 않아요. |
+| **`pointer(채널)`** | 주력이 아닌 다른 노출 표면을 가리키는 표기. 주력 채널 개수에는 포함되지 않지만, 가리킨 채널의 실물 존재 검사와 manifest 채널 집합에는 포함돼요. 포인터 파일이나 내용을 생성하지는 않아요. |
+
+채널 목록은 `,` 로 나누고 각 토큰의 앞뒤 공백과 빈 토큰을 버려요. `pointer` 는 `pointer(` 바로 뒤에 채널 식별자를 쓰는 형식이고 괄호 안쪽 공백은 허용해요. `#` 앞에 공백이 있는 행 끝 주석과 주석 전용 행을 제거하므로, `#`로 바로 시작하는 행은 주석으로 인식하지 않아요.
+
+**검증·투영** — `node spike/gen-channel-manifest.mjs --check` 는 기본적으로 `channels/` 바로 아래의 모든 `*.eux` 를 읽어요. 각 입력에 값이 있는 `@component` 와 비어 있지 않은 `@channels` 가 있어야 하고, 여러 입력의 `@component` 값은 하나로 같아야 해요.
+
+- `mcp` 는 `mcp/server.cjs`·`mcp/package.json`, `hook` 은 `hooks/hooks.json`, `skill` 은 하나 이상의 `skills/*/SKILL.md` 실물이 있는지 검사해요. `skill` 검사는 기능별 파일 대응이 아니라 Skill 실물의 전역 존재 검사예요.
+- 주력 또는 포인터에 `mcp` 가 하나라도 있으면 `.claude-plugin/plugin.json` 의 `mcpServers` 를 만들어요. `name` 은 `@component` 의 `-plugin` 접미사를 뺀 값, `version` 과 MCP 서버 이름은 `mcp/package.json`, 실행 경로는 `${CLAUDE_PLUGIN_ROOT}/mcp/server.cjs` 에서 가져와요. Skill 과 hook 은 Claude 플러그인이 약속된 디렉터리에서 발견하므로 manifest 항목으로 만들지 않아요.
+- manifest 의 관리 필드(`name`·`version`·`description`·`mcpServers`)는 선언에서 다시 만들고, 기존의 비관리 필드 값은 보존해요. `--check` 는 생성 결과와 커밋된 manifest 를 바이트 단위로 대조해 부재·JSON 해석 실패·첫 불일치를 FAIL 로 보고하고, `--write` 는 같은 사전 검증을 통과한 때만 덮어써요.
+
+**제약·주의**:
+- 배정 행은 `기능키 : 채널[, pointer(채널)...]` 형식이어야 해요. `@channels` 뒤 다음 `@directive` 전까지의 비어 있지 않은 다른 형식 행은 FAIL 이에요.
+- 주력 채널이 없거나 2개 이상이면 FAIL 이에요. `pointer(...)` 만 적어도 주력이 없는 것으로 판정하고, 해석할 수 없는 토큰과 투영 규칙이 없는 채널도 FAIL 이에요.
+- 같은 기능 키를 한 파일 또는 여러 `channels/*.eux` 에 두 번 선언하면, 주력 값이 같아도 중복 주력 선언으로 모두 FAIL 이에요.
+- 포인터는 0개 이상 받을 수 있고, 현재 파서는 포인터의 중복이나 주력과 같은 채널인지 여부를 별도로 금지하지 않아요. 또한 포인터가 실제로 주력 구현을 참조하는 내용인지까지 검사하지 않아요.
 
 ---
 
