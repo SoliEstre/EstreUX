@@ -6,7 +6,7 @@
 
 @channels
   default : mcp                          # 기본 배정 «의도» 기록 — 생성기는 상속시키지 않는다(§2.8)
-  brewGuide : skill                      # brew 절차 안내 — 사람이 읽고 따르는 절차 문서 성격
+  brewGuide : skill(estreux-brew)         # brew 절차 안내 — 사람이 읽고 따르는 절차 문서 성격
   distillTool : mcp                      # distill(코드→spec 역증류) 도구 노출
   brewTool : mcp                         # brew(spec→코드) 도구 노출
   driftCheckTool : mcp, pointer(hook)    # drift 검사 도구 — 주력 MCP, 훅에서 포인터로 호출

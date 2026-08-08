@@ -108,16 +108,33 @@ function parseEux(filePath) {
     const feature = assignment[1];
     const tokens = assignment[2].split(',').map((token) => token.trim()).filter(Boolean);
     const primary = [];
+    const primaryPhysicalNames = [];
     const pointers = [];
     const invalidTokens = [];
 
     for (const token of tokens) {
       const pointer = token.match(/^pointer\(\s*([A-Za-z][\w-]*)\s*\)$/);
       if (pointer) pointers.push(pointer[1]);
-      else if (/^[A-Za-z][\w-]*$/.test(token)) primary.push(token);
-      else invalidTokens.push(token);
+      else {
+        const primaryToken = token.match(/^([A-Za-z][\w-]*)(?:\(\s*([^()\/\\]+?)\s*\))?$/u);
+        const physicalName = primaryToken?.[2]?.trim();
+        if (primaryToken && physicalName !== '.' && physicalName !== '..') {
+          primary.push(primaryToken[1]);
+          primaryPhysicalNames.push(physicalName || null);
+        } else {
+          invalidTokens.push(token);
+        }
+      }
     }
-    entries.push({ filePath, line: lineNumber, feature, primary, pointers, invalidTokens });
+    entries.push({
+      filePath,
+      line: lineNumber,
+      feature,
+      primary,
+      primaryPhysicalNames,
+      pointers,
+      invalidTokens,
+    });
   }
 
   return { filePath, component, channelsLine, channelsNone, entries };
@@ -129,15 +146,6 @@ function listEuxFiles(channelsDir) {
     .filter((entry) => entry.isFile() && entry.name.endsWith('.eux'))
     .map((entry) => resolve(channelsDir, entry.name))
     .sort((a, b) => a.localeCompare(b));
-}
-
-function skillFiles(channelsDir) {
-  const skillsDir = resolve(channelsDir, 'skills');
-  if (!existsSync(skillsDir) || !statSync(skillsDir).isDirectory()) return [];
-  return readdirSync(skillsDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => resolve(skillsDir, entry.name, 'SKILL.md'))
-    .filter((filePath) => existsSync(filePath));
 }
 
 function validateSpecs(specs, channelsDir) {
@@ -210,11 +218,18 @@ function validateSpecs(specs, channelsDir) {
     }
   }
 
-  const availableSkills = skillFiles(channelsDir);
   for (const spec of specs) {
     for (const entry of spec.entries) {
       if (entry.invalid) continue;
-      for (const channel of [...entry.primary, ...entry.pointers]) {
+      const exposures = [
+        ...entry.primary.map((channel, index) => ({
+          channel,
+          physicalName: entry.primaryPhysicalNames[index],
+          isPrimary: true,
+        })),
+        ...entry.pointers.map((channel) => ({ channel, physicalName: null, isPrimary: false })),
+      ];
+      for (const { channel, physicalName, isPrimary } of exposures) {
         const surface = CHANNEL_SURFACES[channel];
         if (!surface) {
           diagnostics.push({
@@ -225,9 +240,24 @@ function validateSpecs(specs, channelsDir) {
           continue;
         }
 
-        const missing = channel === 'skill'
-          ? (availableSkills.length ? [] : ['skills/*/SKILL.md'])
-          : surface.files.filter((file) => !existsSync(resolve(channelsDir, file)));
+        // 주력 skill 은 실물 이름을 «선언» 해야 한다 — 없을 때 기능 키를 실물 이름으로 «간주» 하면,
+        // 이름이 어긋난 배치에서 조용히 엉뚱한 경로를 재게 된다(협업 프로젝트 실측: 설치본 114 스킬 중
+        // 디렉터리명 ≠ 정본 이름 3건). 「부재」를 「일치」로 읽는 기본값은 v1.5 `none` 이 세운 원칙
+        // — «없음»과 «안 적음»을 한 모양으로 만들지 않는다 — 을 이름 축에서 되살린다.
+        if (channel === 'skill' && isPrimary && !physicalName) {
+          diagnostics.push({
+            filePath: entry.filePath,
+            line: entry.line,
+            reason: `기능 ${entry.feature}의 skill 실물 이름이 선언되지 않음 — \`${entry.feature} : skill(<디렉터리명>)\` 형식으로 적을 것`,
+          });
+          continue;
+        }
+        // ⚠ 알려진 약점: pointer(skill) 은 실물 이름을 실을 자리가 없어 전역 존재 검사로 남는다.
+        //    즉 이 축은 포인터에 대해서는 「그 기능의 스킬이 있다」를 보장하지 않는다.
+        const expectedFiles = channel === 'skill'
+          ? (isPrimary ? [`skills/${physicalName}/SKILL.md`] : surface.files)
+          : surface.files;
+        const missing = expectedFiles.filter((file) => !existsSync(resolve(channelsDir, file)));
         if (missing.length) {
           diagnostics.push({
             filePath: entry.filePath,
@@ -364,6 +394,12 @@ function main() {
 
   const featureCount = specs.reduce((count, spec) => count + spec.entries.filter((entry) => entry.feature !== 'default').length, 0);
   const noneCount = specs.filter((spec) => spec.channelsNone).length;
+  const skillFeatureCount = specs.reduce((count, spec) => count + spec.entries.filter((entry) => (
+    [...(entry.primary || []), ...(entry.pointers || [])].includes('skill')
+  )).length, 0);
+  const skillSummary = skillFeatureCount === 0
+    ? 'skill 선언 기능 0개(검사 없음)'
+    : `skill 선언 기능 ${skillFeatureCount}개`;
 
   const manifestPath = resolve(options.channelsDir, '.claude-plugin/plugin.json');
   const previous = existsSync(manifestPath) ? readFileSync(manifestPath, 'utf8') : null;
@@ -387,7 +423,7 @@ function main() {
       writeFileSync(manifestPath, rendered);
       console.log(`OK ${displayPath(manifestPath)}: @channels에서 다시 생성`);
     }
-    console.log(`OK 채널 manifest 요약 — ${euxFiles.length}개 spec, ${featureCount}개 기능, none ${noneCount}개, 경로=${ROOT_TOKEN}`);
+    console.log(`OK 채널 manifest 요약 — ${euxFiles.length}개 spec, ${featureCount}개 기능, none ${noneCount}개, ${skillSummary}, 경로=${ROOT_TOKEN}`);
     return;
   }
 
@@ -405,7 +441,7 @@ function main() {
     return;
   }
 
-  console.log(`OK 채널 manifest 일치 — ${euxFiles.length}개 spec, ${featureCount}개 기능, none ${noneCount}개, 경로=${ROOT_TOKEN}`);
+  console.log(`OK 채널 manifest 일치 — ${euxFiles.length}개 spec, ${featureCount}개 기능, none ${noneCount}개, ${skillSummary}, 경로=${ROOT_TOKEN}`);
 }
 
 main();
