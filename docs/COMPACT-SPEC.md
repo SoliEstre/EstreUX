@@ -31,7 +31,7 @@ node bin/estreux.mjs drift <file.eux>    # .eux ↔ 산출물 검사
 
 - 합성 예제: [`spike/notif-toggle.eux`](spike/notif-toggle.eux) (알림 토글 위젯)
 - 플래그십 예제·spike 결과: [GitHub 저장소](https://github.com/SoliEstre/EstreUX) (`examples/` 끝말잇기 1 spec → 3 변종 데모 · `spike/SPIKE.md` — npm 배포본엔 미포함, 저장소 참조)
-- `.eux` 포맷: [v0](docs/eux-format-v0.md)(8 디렉티브) · [v1](docs/eux-format-v1.md)(비-UI 디렉티브 + adapter contract 7종 + 행동 계약 `@invariants`/`@metamorphic` + `css-asset` 프로파일 v1.3 — CSS 전략적-로딩 + `@channels` v1.4 — 기능별 주력 채널·포인터 선언과 manifest 정합)
+- `.eux` 포맷: [v0](docs/eux-format-v0.md)(8 디렉티브) · [v1](docs/eux-format-v1.md)(비-UI 디렉티브 + adapter contract 7종 + 행동 계약 `@invariants`/`@metamorphic` + `css-asset` 프로파일 v1.3 — CSS 전략적-로딩 + `@channels` v1.5 — 기능별 주력 채널·포인터 또는 사유가 있는 `none` 선언과 manifest 정합)
 - 검증: `drift-check --contract`(인터페이스 정적) · `--invariant`(행동 계약 정적) · `--css`(css-asset 정적 3-gate) · `p4-check`(`@metamorphic` 동적, fast-check) — brew(생성) ↔ 검증 대칭. css-asset 예제: [`spike/fixtures/css-asset/`](spike/fixtures/css-asset/) (`npm run css`)
 - brew provider (2026-05-23 확정): **기본 = 호스트 에이전트/서브에이전트** (에이전트 IDE 안에서 별도 키 없이 brew, γ 타깃 병렬 위임 — 실구현 Phase B) · **부가 = API/OAuth** (로컬 Ollama·vLLM·LM Studio · BYOK, 헤드리스·CI용) · **lock = `template`** (결정적 PoC, 현 Phase A 사용). [`spike/providers/`](spike/providers/), trio `model` prefix 로 선택.
 - drift 훅: `git config core.hooksPath .githooks` (또는 `npm install` 시 `prepare` 가 자동 설정). 커밋 전 `.eux`↔산출물 drift 를 차단.

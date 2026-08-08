@@ -77,6 +77,7 @@ function parseEux(filePath) {
   const entries = [];
   let component = null;
   let channelsLine = null;
+  let channelsNone = null;
   let inChannels = false;
 
   for (let index = 0; index < lines.length; index++) {
@@ -88,7 +89,11 @@ function parseEux(filePath) {
       const [, name, rest] = directive;
       inChannels = name === 'channels';
       if (name === 'component') component = { value: rest.trim(), line: lineNumber };
-      if (name === 'channels') channelsLine = lineNumber;
+      if (name === 'channels') {
+        channelsLine = lineNumber;
+        const none = stripComment(rest).trim().match(/^none\s*(?::\s*(.*))?$/);
+        if (none) channelsNone = { line: lineNumber, reason: (none[1] || '').trim() };
+      }
       continue;
     }
     if (!inChannels || !stripComment(line).trim()) continue;
@@ -115,7 +120,7 @@ function parseEux(filePath) {
     entries.push({ filePath, line: lineNumber, feature, primary, pointers, invalidTokens });
   }
 
-  return { filePath, component, channelsLine, entries };
+  return { filePath, component, channelsLine, channelsNone, entries };
 }
 
 function listEuxFiles(channelsDir) {
@@ -150,6 +155,21 @@ function validateSpecs(specs, channelsDir) {
     }
     if (!spec.channelsLine) {
       diagnostics.push({ filePath: spec.filePath, line: 1, reason: '@channels 선언이 없음' });
+    } else if (spec.channelsNone) {
+      if (!spec.channelsNone.reason) {
+        diagnostics.push({
+          filePath: spec.filePath,
+          line: spec.channelsNone.line,
+          reason: '@channels none에는 비어 있지 않은 사유가 필요함',
+        });
+      }
+      if (spec.entries.length > 0) {
+        diagnostics.push({
+          filePath: spec.filePath,
+          line: spec.channelsNone.line,
+          reason: '@channels none과 배정 블록이 함께 있어 어느 쪽이 참인지 판정할 수 없음',
+        });
+      }
     } else if (spec.entries.length === 0) {
       diagnostics.push({ filePath: spec.filePath, line: spec.channelsLine, reason: '@channels 배정이 비어 있음' });
     }
@@ -342,6 +362,9 @@ function main() {
     return;
   }
 
+  const featureCount = specs.reduce((count, spec) => count + spec.entries.filter((entry) => entry.feature !== 'default').length, 0);
+  const noneCount = specs.filter((spec) => spec.channelsNone).length;
+
   const manifestPath = resolve(options.channelsDir, '.claude-plugin/plugin.json');
   const previous = existsSync(manifestPath) ? readFileSync(manifestPath, 'utf8') : null;
   let existingManifest = {};
@@ -364,6 +387,7 @@ function main() {
       writeFileSync(manifestPath, rendered);
       console.log(`OK ${displayPath(manifestPath)}: @channels에서 다시 생성`);
     }
+    console.log(`OK 채널 manifest 요약 — ${euxFiles.length}개 spec, ${featureCount}개 기능, none ${noneCount}개, 경로=${ROOT_TOKEN}`);
     return;
   }
 
@@ -381,8 +405,7 @@ function main() {
     return;
   }
 
-  const featureCount = specs.reduce((count, spec) => count + spec.entries.filter((entry) => entry.feature !== 'default').length, 0);
-  console.log(`OK 채널 manifest 일치 — ${euxFiles.length}개 spec, ${featureCount}개 기능, 경로=${ROOT_TOKEN}`);
+  console.log(`OK 채널 manifest 일치 — ${euxFiles.length}개 spec, ${featureCount}개 기능, none ${noneCount}개, 경로=${ROOT_TOKEN}`);
 }
 
 main();

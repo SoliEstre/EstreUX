@@ -13,7 +13,7 @@
 | | v0 (Phase A) | v1 (Universal) |
 | --- | --- | --- |
 | **scope** | UI 컴포넌트만 | 전 개발 영역(UI·backend·protocol·state machine·data) |
-| **디렉티브** | 8종 (`@component`·`@intent`·`@expansion`·`@targets`·`@state`·`@behavior`·`@render`·`@persist`) | 8종 **+ 신규 4종** (`@ports`·`@machine`·`@source`·`@deps`) · 후속: v1.1 adapter contract 7종 · v1.2 `@invariants`/`@metamorphic` · v1.4 `@channels` |
+| **디렉티브** | 8종 (`@component`·`@intent`·`@expansion`·`@targets`·`@state`·`@behavior`·`@render`·`@persist`) | 8종 **+ 신규 4종** (`@ports`·`@machine`·`@source`·`@deps`) · 후속: v1.1 adapter contract 7종 · v1.2 `@invariants`/`@metamorphic` · v1.4 `@channels` · v1.5 `@channels none: <사유>` |
 | **분류** | (없음 — 전부 UI 가정) | **컴포넌트 프로파일** 5종 (ui-component·backend-service·protocol-adapter·state-machine·supervisor) + v1.3 `css-asset` |
 
 ⚠️ **v1 은 "추가"이지 "교체"가 아니다.** v0 의 8 디렉티브·결정성 trio·provenance/drift 규칙은 **그대로 계승**돼요. UI 컴포넌트는 v0 와 똑같이 쓰면 되고, 비-UI 모듈만 새 디렉티브를 추가로 쓰면 돼요.
@@ -267,11 +267,11 @@ event-driven 운영 원칙 + anti-pattern 카탈로그.
 
 > **`@hazards` 3-class (Q3, 별도 트랙)** — orchestration-state class 추가 합의(credential·integrity 외): 식별자 누설·wait/escalation state 누설·anonymous probe 흔적·handoff race window. 구체 list 는 P3a 1st cut(server-relay) drafting 시 협의. `@hazards` 절 정식화는 C8 트랙(§6)과 함께.
 
-## 2.8 노출 채널 디렉티브 — `@channels` (v1.4)
+## 2.8 노출 채널 디렉티브 — `@channels` (v1.5)
 
 > **왜** — 같은 플러그인 기능을 Skill·MCP·hook 여러 표면에 내놓을 때 배정이 디렉터리 위치에만 있으면, 한 기능의 구현이 둘로 갈라지거나 spec 과 실물 배치가 조용히 어긋날 수 있어요. `@channels` 는 기능별 **주력 채널 1개**와 다른 채널의 **포인터**를 `.eux` 에 기록해, `channels/` 배정과 Claude 플러그인 manifest 를 한 게이트에서 검사하게 해요.
 
-**무엇** — 플러그인의 기능 키마다 주력 노출 채널을 하나 지정하고, 같은 기능을 다른 표면에서도 찾게 할 필요가 있으면 `pointer(...)` 를 덧붙이는 선언이에요.
+**무엇** — 플러그인의 기능 키마다 주력 노출 채널을 하나 지정하고, 같은 기능을 다른 표면에서도 찾게 할 필요가 있으면 `pointer(...)` 를 덧붙이는 선언이에요. 어느 표면에도 직접 노출되지 않는 spec 은 `none` 과 사유를 인라인 값으로 선언해요.
 
 **문법** — `channels/estreux-plugin.eux` 의 실사용 선언을 줄이면 다음과 같아요:
 
@@ -283,22 +283,32 @@ event-driven 운영 원칙 + anti-pattern 카탈로그.
   driftGate : hook, pointer(mcp)
 ```
 
+노출 표면이 하나도 없는 spec 은 배정 블록 없이 다음처럼 써요:
+
+```
+@channels none: 공용 부품 — 어느 표면에도 직접 노출되지 않음
+```
+
 | 요소 | 의미 |
 |---|---|
 | **기능 키** | `brewGuide`·`driftCheckTool` 같은 배정 식별자. 첫 글자는 영문자 또는 `_`, 이후는 영문자·숫자·`_`·`-`를 써요. 현재 생성기는 이 키를 다른 디렉티브의 절 이름과 대조하지 않아요. |
 | **주력 채널 값** | `:` 뒤의 일반 토큰. 한 배정에 정확히 하나여야 해요. 현재 투영 규칙이 있는 값은 `skill`·`mcp`·`hook` 세 가지예요. |
 | **`default`** | 기본 배정 의도를 기록하는 특수 기능 키. 파싱·채널 실물 검사·manifest 채널 집합에는 일반 배정과 똑같이 참여하고, 성공 요약의 기능 수에서만 빠져요. 현재 생성기는 `default` 값을 다른 기능에 상속하거나 생략된 기능의 배정을 채우지 않아요. |
 | **`pointer(채널)`** | 주력이 아닌 다른 노출 표면을 가리키는 표기. 주력 채널 개수에는 포함되지 않지만, 가리킨 채널의 실물 존재 검사와 manifest 채널 집합에는 포함돼요. 포인터 파일이나 내용을 생성하지는 않아요. |
+| **`none: <사유>`** | 이 spec 이 어느 노출 표면에도 직접 기여하지 않음을 명시하는 디렉티브 인라인 값. 사유는 주석이 아니라 값이며, 주석 제거 뒤에도 비어 있지 않아야 해요. 배정 블록과 함께 쓸 수 없어요. |
 
-채널 목록은 `,` 로 나누고 각 토큰의 앞뒤 공백과 빈 토큰을 버려요. `pointer` 는 `pointer(` 바로 뒤에 채널 식별자를 쓰는 형식이고 괄호 안쪽 공백은 허용해요. `#` 앞에 공백이 있는 행 끝 주석과 주석 전용 행을 제거하므로, `#`로 바로 시작하는 행은 주석으로 인식하지 않아요.
+채널 목록은 `,` 로 나누고 각 토큰의 앞뒤 공백과 빈 토큰을 버려요. `pointer` 는 `pointer(` 바로 뒤에 채널 식별자를 쓰는 형식이고 괄호 안쪽 공백은 허용해요. `#` 앞에 공백이 있는 행 끝 주석과 주석 전용 행을 제거하므로, `#`로 바로 시작하는 행은 주석으로 인식하지 않아요. `none` 의 사유도 이 주석 제거 뒤에 남은 값으로 판정하므로 주석은 사유로 세지 않아요.
 
-**검증·투영** — `node spike/gen-channel-manifest.mjs --check` 는 기본적으로 `channels/` 바로 아래의 모든 `*.eux` 를 읽어요. 각 입력에 값이 있는 `@component` 와 비어 있지 않은 `@channels` 가 있어야 하고, 여러 입력의 `@component` 값은 하나로 같아야 해요.
+**검증·투영** — `node spike/gen-channel-manifest.mjs --check` 는 기본적으로 `channels/` 바로 아래의 모든 `*.eux` 를 읽어요. 각 입력에 값이 있는 `@component` 와 배정 블록 또는 사유가 있는 `@channels none:` 선언이 있어야 하고, 여러 입력의 `@component` 값은 하나로 같아야 해요.
 
+- `none` 인 spec 은 검사·투영 채널 집합에 아무것도 더하지 않아요. 여러 spec 중 일부만 `none` 이면 나머지 spec 의 채널은 그대로 투영되고, 전부 `none` 이면 manifest 에 `mcpServers` 를 만들지 않아요.
 - `mcp` 는 `mcp/server.cjs`·`mcp/package.json`, `hook` 은 `hooks/hooks.json`, `skill` 은 하나 이상의 `skills/*/SKILL.md` 실물이 있는지 검사해요. `skill` 검사는 기능별 파일 대응이 아니라 Skill 실물의 전역 존재 검사예요.
 - 주력 또는 포인터에 `mcp` 가 하나라도 있으면 `.claude-plugin/plugin.json` 의 `mcpServers` 를 만들어요. `name` 은 `@component` 의 `-plugin` 접미사를 뺀 값, `version` 과 MCP 서버 이름은 `mcp/package.json`, 실행 경로는 `${CLAUDE_PLUGIN_ROOT}/mcp/server.cjs` 에서 가져와요. Skill 과 hook 은 Claude 플러그인이 약속된 디렉터리에서 발견하므로 manifest 항목으로 만들지 않아요.
 - manifest 의 관리 필드(`name`·`version`·`description`·`mcpServers`)는 선언에서 다시 만들고, 기존의 비관리 필드 값은 보존해요. `--check` 는 생성 결과와 커밋된 manifest 를 바이트 단위로 대조해 부재·JSON 해석 실패·첫 불일치를 FAIL 로 보고하고, `--write` 는 같은 사전 검증을 통과한 때만 덮어써요.
 
 **제약·주의**:
+- `@channels none` 또는 콜론 뒤에 공백만 있는 `@channels none:` 은 사유가 없으므로 FAIL 이에요. `@channels none: <사유>` 와 배정 블록을 함께 쓰면 어느 쪽이 참인지 판정할 수 없는 모순으로 FAIL 이에요.
+- `none` 없이 `@channels` 만 쓰고 배정 블록을 비우면 기존과 같이 `@channels 배정이 비어 있음` 으로 FAIL 이에요.
 - 배정 행은 `기능키 : 채널[, pointer(채널)...]` 형식이어야 해요. `@channels` 뒤 다음 `@directive` 전까지의 비어 있지 않은 다른 형식 행은 FAIL 이에요.
 - 주력 채널이 없거나 2개 이상이면 FAIL 이에요. `pointer(...)` 만 적어도 주력이 없는 것으로 판정하고, 해석할 수 없는 토큰과 투영 규칙이 없는 채널도 FAIL 이에요.
 - 같은 기능 키를 한 파일 또는 여러 `channels/*.eux` 에 두 번 선언하면, 주력 값이 같아도 중복 주력 선언으로 모두 FAIL 이에요.
