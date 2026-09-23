@@ -8,6 +8,9 @@
 - **eux-format v1.5** — `@channels none: <사유>`로 어느 Skill·MCP·hook 표면에도 직접 노출되지 않는 spec 을 배정 부재와 구분해 명시. 사유가 비어 있거나 배정 블록과 함께 있으면 FAIL 하고, `none` spec 은 투영 채널 집합에 기여하지 않으며 성공 요약에 spec 개수를 표시. 주력 채널의 선택적 실물 이름 문법(`skill(estreux-brew)`)을 추가하고, `skill` 선언은 전역 `skills/*/SKILL.md` 존재가 아니라 기능별 `skills/<지정명 또는 기능키>/SKILL.md`와 대조하며 0건이면 검사 없음으로 요약.
 - **eux-format v1.4** — `@channels` 디렉티브 ([docs/eux-format-v1.md](docs/eux-format-v1.md) §2.8): 플러그인 기능별 주력 채널 1개(`skill`·`mcp`·`hook`)와 `pointer(...)` 를 `.eux` 에 기록하고, `spike/gen-channel-manifest.mjs` 가 채널 실물과 `.claude-plugin/plugin.json` 투영 결과를 검사. `default` 는 검사·투영 채널 집합에 참여하지만 다른 기능에 자동 상속되지는 않음.
 
+### Changed
+- **`gen-channel-manifest --check` 를 구조 대조로** — 텍스트(바이트) 대조는 포매터로 정리한 `plugin.json` 을 내용이 같아도 FAIL 시켰고(args 한 줄 조립 vs 표준 pretty-print), 진짜 불일치가 있어도 포맷 차이 줄을 먼저 가리켜 원인을 가렸다. 이제 파싱한 구조로 대조해 들여쓰기·줄바꿈·키 순서를 무시하고, 불일치는 JSON 경로 + 현재/생성 값으로 지목. 생성은 문자열 수동 조립 대신 객체 → `JSON.stringify(…, 2)`, `--write` 는 구조가 다를 때만 덮어써 사용자 포맷 보존.
+
 ## 0.4.0 (2026-06-05)
 
 `.eux` 에 **CSS 전략적-로딩 manifest**(`css-asset` 프로파일, RCSS collab) 를 추가한 minor — 실 서비스 dogfooding 으로 정적+동적 한 바퀴 실증.

@@ -304,7 +304,7 @@ event-driven 운영 원칙 + anti-pattern 카탈로그.
 - `none` 인 spec 은 검사·투영 채널 집합에 아무것도 더하지 않아요. 여러 spec 중 일부만 `none` 이면 나머지 spec 의 채널은 그대로 투영되고, 전부 `none` 이면 manifest 에 `mcpServers` 를 만들지 않아요.
 - `mcp` 는 `mcp/server.cjs`·`mcp/package.json`, `hook` 은 `hooks/hooks.json` 을 검사해요. **주력** `skill` 은 **기능별로** `skills/<실물이름>/SKILL.md` 를 검사하고, 실물 이름이 없으면 그 자체로 FAIL 이에요. 파일이나 `skills/` 디렉터리가 없으면 기능 이름과 찾지 못한 경로를 함께 지목해 FAIL 해요. ⚠ **`pointer(skill)` 은 실물 이름을 실을 자리가 없어 전역 존재 검사로 남아요** — 즉 이 축은 포인터에 대해서는 「그 기능의 스킬이 있다」를 보장하지 않아요. 알려진 약점이고, 포인터에 별칭이 필요해지면 문법을 넓혀야 해요. 저장소 어딘가에 다른 Skill 하나가 있다는 이유로 통과시키는 전역 존재 검사는 하지 않아요. `skill` 선언 기능이 0개면 이 축은 검사할 것이 없으므로 성공 요약에 `skill 선언 기능 0개(검사 없음)`이라고 표시해요.
 - 주력 또는 포인터에 `mcp` 가 하나라도 있으면 `.claude-plugin/plugin.json` 의 `mcpServers` 를 만들어요. `name` 은 `@component` 의 `-plugin` 접미사를 뺀 값, `version` 과 MCP 서버 이름은 `mcp/package.json`, 실행 경로는 `${CLAUDE_PLUGIN_ROOT}/mcp/server.cjs` 에서 가져와요. Skill 과 hook 은 Claude 플러그인이 약속된 디렉터리에서 발견하므로 manifest 항목으로 만들지 않아요.
-- manifest 의 관리 필드(`name`·`version`·`description`·`mcpServers`)는 선언에서 다시 만들고, 기존의 비관리 필드 값은 보존해요. `--check` 는 생성 결과와 커밋된 manifest 를 바이트 단위로 대조해 부재·JSON 해석 실패·첫 불일치를 FAIL 로 보고하고, `--write` 는 같은 사전 검증을 통과한 때만 덮어써요.
+- manifest 의 관리 필드(`name`·`version`·`description`·`mcpServers`)는 선언에서 다시 만들고, 기존의 비관리 필드 값은 보존해요. `--check` 는 생성 결과와 커밋된 manifest 를 **파싱한 구조로** 대조해요 — 들여쓰기·줄바꿈·키 순서는 판정에 넣지 않으므로 에디터·포매터로 정리한 manifest 도 내용이 같으면 통과해요. 부재·JSON 해석 실패·첫 불일치를 FAIL 로 보고하고, 불일치는 JSON 경로(예: `mcpServers.estreux-mcp.args[0]`)와 현재·생성 값으로 지목해요. `--write` 는 같은 사전 검증을 통과한 때만, 그리고 구조가 다를 때만 표준 들여쓰기(2칸)로 덮어써요 — 내용이 같으면 사용자의 포맷을 건드리지 않아요.
 
 **제약·주의**:
 - `@channels none` 또는 콜론 뒤에 공백만 있는 `@channels none:` 은 사유가 없으므로 FAIL 이에요. `@channels none: <사유>` 와 배정 블록을 함께 쓰면 어느 쪽이 참인지 판정할 수 없는 모순으로 FAIL 이에요.

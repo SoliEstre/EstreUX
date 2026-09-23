@@ -320,50 +320,69 @@ function renderManifest(specs, channelsDir, existingManifest = {}) {
     ...(entry.pointers || []),
   ])));
 
-  const properties = [
-    `  "name": ${JSON.stringify(pluginName)}`,
-    `  "version": ${JSON.stringify(mcpPackage.version || '0.0.0')}`,
-    `  "description": ${JSON.stringify(MANIFEST_DESCRIPTION)}`,
-  ];
-
+  // 객체를 만들고 표준 출력으로 쓴다 — 예전엔 문자열을 손으로 조립해 args 를 한 줄로 썼고,
+  //   에디터·포매터로 정리한 plugin.json 은 내용이 같아도 --check 가 FAIL 했다(08-06 실측).
+  const manifest = {
+    name: pluginName,
+    version: mcpPackage.version || '0.0.0',
+    description: MANIFEST_DESCRIPTION,
+  };
   if (channels.has('mcp')) {
     const serverName = mcpPackage.name || `${pluginName}-mcp`;
-    properties.push([
-      '  "mcpServers": {',
-      `    ${JSON.stringify(serverName)}: {`,
-      '      "command": "node",',
-      `      "args": ["${ROOT_TOKEN}/mcp/server.cjs"]`,
-      '    }',
-      '  }',
-    ].join('\n'));
+    manifest.mcpServers = { [serverName]: { command: 'node', args: [`${ROOT_TOKEN}/mcp/server.cjs`] } };
   }
-
   for (const [key, value] of Object.entries(existingManifest)) {
     if (MANAGED_MANIFEST_FIELDS.has(key)) continue;
-    const [firstLine, ...rest] = JSON.stringify(value, null, 2).split('\n');
-    properties.push([
-      `  ${JSON.stringify(key)}: ${firstLine}`,
-      ...rest.map((line) => `  ${line}`),
-    ].join('\n'));
+    manifest[key] = value;
   }
-
-  return ['{', properties.join(',\n'), '}'].join('\n') + '\n';
+  return manifest;
 }
 
-function firstDiff(actual, expected) {
-  const actualLines = actual.replace(/\r?\n$/, '').split(/\r?\n/);
-  const expectedLines = expected.replace(/\r?\n$/, '').split(/\r?\n/);
-  const count = Math.max(actualLines.length, expectedLines.length);
-  for (let index = 0; index < count; index++) {
-    if (actualLines[index] !== expectedLines[index]) {
-      return {
-        line: index + 1,
-        actual: actualLines[index] ?? '(줄 없음)',
-        expected: expectedLines[index] ?? '(줄 없음)',
-      };
+// 대조는 텍스트가 아니라 구조로 — 들여쓰기·줄바꿈·키 순서는 판정에 넣지 않는다.
+//   진단은 줄 번호 대신 JSON 경로(mcpServers.x.args[0]) + 현재/생성 값. 줄은 경로의 마지막 키로 찾아 덧붙인다.
+function structuralDiff(actual, expected, at = '') {
+  const kind = (value) => (value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value);
+  if (kind(actual) !== kind(expected)) return { path: at, actual, expected };
+  if (Array.isArray(expected)) {
+    for (let index = 0; index < Math.max(actual.length, expected.length); index++) {
+      const next = `${at}[${index}]`;
+      if (index >= actual.length || index >= expected.length) return { path: next, actual: actual[index], expected: expected[index] };
+      const diff = structuralDiff(actual[index], expected[index], next);
+      if (diff) return diff;
     }
+    return null;
   }
-  return null;
+  if (kind(expected) === 'object') {
+    const keys = [...Object.keys(expected), ...Object.keys(actual).filter((key) => !Object.hasOwn(expected, key))];
+    for (const key of keys) {
+      const next = /^[A-Za-z_$][\w$-]*$/.test(key) ? (at ? `${at}.${key}` : key) : `${at}[${JSON.stringify(key)}]`;
+      if (!Object.hasOwn(actual, key) || !Object.hasOwn(expected, key)) return { path: next, actual: actual[key], expected: expected[key] };
+      const diff = structuralDiff(actual[key], expected[key], next);
+      if (diff) return diff;
+    }
+    return null;
+  }
+  return Object.is(actual, expected) ? null : { path: at, actual, expected };
+}
+
+// 경로의 키들을 차례로 따라가며 원문에서 줄을 찾는다(못 찾으면 거기까지의 줄, 처음이면 1).
+function lineOfPath(text, at) {
+  const keys = [...at.matchAll(/(?:^|\.)([A-Za-z_$][\w$-]*)|\["((?:[^"\\]|\\.)*)"\]/g)].map((match) => match[1] ?? JSON.parse(`"${match[2]}"`));
+  let position = 0;
+  for (const key of keys) {
+    const pattern = new RegExp(`${JSON.stringify(key).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:`, 'g');
+    pattern.lastIndex = position;
+    const match = pattern.exec(text);
+    if (!match) break;
+    position = match.index;
+  }
+  return text.slice(0, position).split('\n').length;
+}
+
+function showValue(value) {
+  if (value === undefined) return '(없음)';
+  const text = JSON.stringify(value);
+  return text.length > 160 ? `${text.slice(0, 157)}...` : text;
 }
 
 function printDiagnostics(diagnostics) {
@@ -414,13 +433,15 @@ function main() {
       return;
     }
   }
-  const rendered = renderManifest(specs, options.channelsDir, existingManifest);
+  const generated = renderManifest(specs, options.channelsDir, existingManifest);
+  const diff = previous === null ? null : structuralDiff(existingManifest, generated);
   if (options.mode === 'write') {
     mkdirSync(dirname(manifestPath), { recursive: true });
-    if (previous === rendered) {
+    if (previous !== null && !diff) {
+      // 내용이 같으면 사용자의 포맷을 덮어쓰지 않는다.
       console.log(`OK ${displayPath(manifestPath)}: 생성 결과와 이미 일치`);
     } else {
-      writeFileSync(manifestPath, rendered);
+      writeFileSync(manifestPath, `${JSON.stringify(generated, null, 2)}\n`);
       console.log(`OK ${displayPath(manifestPath)}: @channels에서 다시 생성`);
     }
     console.log(`OK 채널 manifest 요약 — ${euxFiles.length}개 spec, ${featureCount}개 기능, none ${noneCount}개, ${skillSummary}, 경로=${ROOT_TOKEN}`);
@@ -432,11 +453,10 @@ function main() {
     process.exitCode = 1;
     return;
   }
-  const diff = firstDiff(previous, rendered);
   if (diff) {
-    console.error(`FAIL ${displayPath(manifestPath)}:${diff.line}: 생성 결과와 불일치`);
-    console.error(`  현재: ${diff.actual}`);
-    console.error(`  생성: ${diff.expected}`);
+    console.error(`FAIL ${displayPath(manifestPath)}:${lineOfPath(previous, diff.path)}: 생성 결과와 불일치 — ${diff.path || '(최상위)'}`);
+    console.error(`  현재: ${showValue(diff.actual)}`);
+    console.error(`  생성: ${showValue(diff.expected)}`);
     process.exitCode = 1;
     return;
   }
